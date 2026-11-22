@@ -1,0 +1,2285 @@
+<!DOCTYPE html>
+<html lang="hy">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>C++ Ուսուցում — Թեմա 8․ Միաչափ և Երկչափ Զանգվածներ</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    html, body {
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    button, .code-slot, .word-chip {
+      touch-action: manipulation;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .code-slot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 78px;
+      height: 32px;
+      padding: 0 10px;
+      margin: 2px 4px;
+      border-radius: 6px;
+      border: 2px dashed #64748b;
+      background-color: #1e293b;
+      color: #f8fafc;
+      font-weight: 600;
+      vertical-align: middle;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .code-slot.drag-over {
+      border-color: #22c55e;
+      background-color: #14532d;
+      transform: scale(1.04);
+    }
+    .code-slot.filled {
+      border-style: solid;
+      border-color: #38bdf8;
+      background-color: #0f172a;
+      color: #7dd3fc;
+    }
+    .code-slot.correct {
+      border-color: #22c55e !important;
+      background-color: #14532d !important;
+      color: #bbf7d0 !important;
+    }
+    .code-slot.wrong {
+      border-color: #ef4444 !important;
+      background-color: #7f1d1d !important;
+      color: #fecaca !important;
+    }
+    .word-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 2px solid #cbd5e1;
+      border-bottom-width: 4px;
+      background: #ffffff;
+      color: #0f172a;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: grab;
+      user-select: none;
+      transition: transform 0.12s ease, background-color 0.12s ease, opacity 0.15s ease;
+    }
+    .word-chip:hover:not(.used) {
+      border-color: #3b82f6;
+      background-color: #eff6ff;
+      transform: translateY(-1px);
+    }
+    .word-chip:active:not(.used) {
+      cursor: grabbing;
+      transform: translateY(1px);
+    }
+    .word-chip.used {
+      opacity: 0.32;
+      cursor: default;
+      pointer-events: none;
+    }
+    .choice-card {
+      border: 2px solid #cbd5e1;
+      border-bottom-width: 4px;
+      border-radius: 12px;
+      transition: all 0.15s ease;
+    }
+    .choice-card:hover:not(:disabled) {
+      border-color: #3b82f6;
+      background-color: #f0f9ff;
+    }
+    .choice-card.selected {
+      border-color: #2563eb;
+      background-color: #eff6ff;
+    }
+    .choice-card.correct {
+      border-color: #16a34a;
+      background-color: #f0fdf4;
+      color: #14532d;
+    }
+    .choice-card.wrong {
+      border-color: #dc2626;
+      background-color: #fef2f2;
+      color: #7f1d1d;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-5px); }
+      40%, 80% { transform: translateX(5px); }
+    }
+    .animate-shake {
+      animation: shake 0.35s ease;
+    }
+    /* Scratch-style interlocking puzzle blocks */
+    .scratch-block {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      color: #ffffff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: grab;
+      user-select: none;
+      box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.22), 0 2px 4px rgba(15, 23, 42, 0.12);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.15s ease;
+    }
+    .scratch-block:active {
+      cursor: grabbing;
+      transform: scale(0.99);
+    }
+    .scratch-block.scratch-hat {
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+    }
+    .scratch-block::after {
+      content: '';
+      position: absolute;
+      left: 22px;
+      bottom: -5px;
+      width: 22px;
+      height: 6px;
+      border-radius: 0 0 6px 6px;
+      background: inherit;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .scratch-block.no-notch::after {
+      display: none;
+    }
+    .scratch-cat-event { background-color: #d97706; }   /* Header / main */
+    .scratch-cat-var   { background-color: #ea580c; }   /* Variables / arrays */
+    .scratch-cat-ctrl  { background-color: #eab308; color: #1e293b; } /* Loops / braces */
+    .scratch-cat-op    { background-color: #16a34a; }   /* Math / sum */
+    .scratch-cat-out   { background-color: #7c3aed; }   /* cout output */
+    .scratch-block.is-wrong {
+      outline: 3px solid #ef4444;
+      outline-offset: 1px;
+    }
+    .scratch-block.is-correct {
+      outline: 3px solid #22c55e;
+      outline-offset: 1px;
+    }
+    .scratch-dropzone.drag-over {
+      border-color: #10b981;
+      background-color: #ecfdf5;
+    }
+    .ac-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      background: #1e293b;
+      color: #7dd3fc;
+      border: 1px solid #334155;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background-color 0.12s ease, border-color 0.12s ease;
+    }
+    .ac-chip:hover, .ac-chip:active {
+      background: #0f172a;
+      border-color: #38bdf8;
+      color: #ffffff;
+    }
+    @media (max-width: 640px) {
+      .code-slot {
+        min-width: 52px;
+        height: 28px;
+        padding: 0 7px;
+        margin: 2px 2px;
+        font-size: 0.82rem;
+      }
+      .word-chip {
+        min-height: 40px;
+        padding: 8px 14px;
+        font-size: 0.88rem;
+      }
+      .scratch-block {
+        padding: 8px 10px;
+        font-size: 0.74rem;
+        border-radius: 9px;
+      }
+      .scratch-block::after {
+        left: 16px;
+        width: 18px;
+        height: 5px;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Navigation -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 sm:py-0 sm:h-16 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+      <div class="flex items-center justify-between gap-2 min-w-0">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-600 text-white font-extrabold flex items-center justify-center text-xs sm:text-sm shadow-sm shrink-0">
+            C++
+          </div>
+          <div class="truncate">
+            <div class="font-bold text-slate-900 text-sm sm:text-base leading-tight truncate">Թեմա 8․ Զանգվածներ</div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="grid grid-cols-4 sm:flex items-center gap-1 sm:gap-2 w-full sm:w-auto" aria-label="Հիմնական բաժիններ">
+        <button id="tab-lessons" type="button" class="nav-tab px-1.5 sm:px-3 py-2 rounded-xl text-[11px] sm:text-sm font-semibold transition text-center bg-emerald-50 text-emerald-700 border border-emerald-200">
+          Թեստեր
+        </button>
+        <button id="tab-blocks" type="button" class="nav-tab px-1.5 sm:px-3 py-2 rounded-xl text-[11px] sm:text-sm font-semibold transition text-center text-slate-600 hover:bg-slate-100 border border-transparent">
+          <span class="sm:hidden">🧩 Բլոկներ</span><span class="hidden sm:inline">🧩 Բլոկներով (Scratch)</span>
+        </button>
+        <button id="tab-practice" type="button" class="nav-tab px-1.5 sm:px-3 py-2 rounded-xl text-[11px] sm:text-sm font-semibold transition text-center text-slate-600 hover:bg-slate-100 border border-transparent">
+          <span class="sm:hidden">Կոմպիլյատոր</span><span class="hidden sm:inline">Գործնական + Կոմպիլյատոր</span>
+        </button>
+        <button id="tab-theory" type="button" class="nav-tab px-1.5 sm:px-3 py-2 rounded-xl text-[11px] sm:text-sm font-semibold transition text-center text-slate-600 hover:bg-slate-100 border border-transparent">
+          Տեսություն
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-6">
+
+    <!-- ==================== VIEW 1: LESSONS & QUIZZES (SOLOLEARN STYLE) ==================== -->
+    <section id="view-lessons" class="space-y-5">
+      <!-- Module Selector Bar -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+        <div id="module-pills" class="flex overflow-x-auto no-scrollbar sm:flex-wrap gap-2 pb-0.5 sm:pb-0"></div>
+        <div class="flex items-center justify-between sm:justify-end gap-3 text-xs sm:text-sm pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+          <span id="total-xp-badge" class="px-3 py-1 rounded-full bg-amber-50 text-amber-700 font-bold border border-amber-200">
+            ⭐ 0 միավոր
+          </span>
+          <button id="btn-reset-progress" type="button" class="text-xs font-medium text-slate-500 hover:text-rose-600 underline underline-offset-2 py-1">
+            Սկսել նորից
+          </button>
+        </div>
+      </div>
+
+      <!-- SoloLearn Lesson Card -->
+      <div class="max-w-3xl mx-auto bg-white rounded-2xl sm:rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <!-- SoloLearn Header: Hearts, Stuck?, Progress Bar -->
+        <div class="px-4 sm:px-5 pt-4 sm:pt-5 pb-3.5 sm:pb-4 border-b border-slate-100">
+          <div class="flex items-center justify-between sm:justify-center sm:gap-6 mb-3.5">
+            <div class="flex items-center gap-1.5 font-bold text-slate-800 text-sm sm:text-base" title="Մնացած փորձերը">
+              <span class="text-rose-500 text-lg">♥</span>
+              <span id="hearts-count">5</span>
+            </div>
+            <button id="btn-hint" type="button" class="flex items-center gap-1.5 font-bold text-indigo-600 hover:text-indigo-800 transition text-xs sm:text-sm py-1 px-2 rounded-lg active:bg-indigo-50">
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-700 text-xs">?</span>
+              <span>Դժվարանո՞ւմ ես</span>
+            </button>
+            <div class="text-xs font-semibold text-slate-400" id="step-counter">1 / 6</div>
+          </div>
+
+          <div class="flex items-center gap-2 sm:gap-3">
+            <button id="btn-prev-step" type="button" aria-label="Նախորդ քայլը" class="w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition font-bold text-xl shrink-0">
+              ‹
+            </button>
+            <div class="flex-1 h-3 bg-slate-200 rounded-full overflow-hidden">
+              <div id="lesson-progress-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 16%"></div>
+            </div>
+            <button id="btn-next-step" type="button" aria-label="Հաջորդ քայլը" class="w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100 active:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition font-bold text-xl shrink-0">
+              ›
+            </button>
+          </div>
+        </div>
+
+        <!-- Hint Box (Hidden by default) -->
+        <div id="hint-box" class="hidden mx-4 sm:mx-5 mt-3.5 p-3 sm:p-3.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs sm:text-sm flex items-start gap-2">
+          <span class="text-base shrink-0">💡</span>
+          <p id="hint-text" class="leading-relaxed"></p>
+        </div>
+
+        <!-- Dynamic Step Content -->
+        <div id="step-container" class="p-4 sm:p-8 min-h-[260px] sm:min-h-[340px]"></div>
+
+        <!-- Feedback Banner -->
+        <div id="feedback-banner" class="hidden mx-4 sm:mx-6 mb-4 p-3.5 sm:p-4 rounded-2xl border text-xs sm:text-sm font-medium"></div>
+
+        <!-- Bottom Action Bar -->
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3">
+          <div id="step-type-label" class="hidden"></div>
+          <div class="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto sm:ml-auto">
+            <button id="btn-clear-slots" type="button" class="hidden px-4 py-3 sm:py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 font-semibold text-sm hover:bg-slate-100 transition shrink-0">
+              Մաքրել
+            </button>
+            <button id="btn-check" type="button" class="flex-1 sm:flex-none px-7 py-3 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed">
+              Ստուգել
+            </button>
+            <button id="btn-continue" type="button" class="hidden flex-1 sm:flex-none px-7 py-3 sm:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition">
+              Շարունակել →
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: SCRATCH-STYLE BLOCK ASSEMBLY ==================== -->
+    <section id="view-blocks" class="hidden space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 class="hidden lg:block text-lg sm:text-xl font-extrabold text-slate-900">🧩 Գործնական աշխատանքներ՝ Scratch-ի նման բլոկներով</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5"><span class="lg:hidden">Դասավորիր արդեն տեղադրված բլոկները ↑ / ↓ սլաքներով և ✕-ով հեռացրու ավելորդ բլոկը։</span><span class="hidden lg:inline">Հավաքիր C++ ծրագիրը ճիշտ հերթականությամբ․ սեղմիր բլոկի վրա կամ քաշիր աշխատանքային դաշտ։</span></p>
+          </div>
+          <span id="blocks-score-badge" class="px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200">
+            🧩 0 / 5 լուծված
+          </span>
+        </div>
+        <div id="block-task-pills" class="flex overflow-x-auto no-scrollbar sm:flex-wrap gap-2 pb-0.5 sm:pb-0"></div>
+      </div>
+
+      <!-- Selected Task Description + Matrix -->
+      <div id="block-task-header" class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm"></div>
+
+      <!-- Two-Column Scratch Area: Mobile = Workspace first then Palette; Desktop = Palette left, Workspace right -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
+        <!-- Block Palette (On mobile: acts as Deleted/Removed blocks tray only when a block is removed) -->
+        <div id="scratch-palette-card" class="order-2 lg:order-1 lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-3.5 sm:p-5 shadow-sm space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <h2 id="scratch-palette-title" class="text-sm font-extrabold text-slate-900 uppercase tracking-wide">🎨 Բլոկների պահոց</h2>
+            <span id="scratch-palette-sub" class="text-[11px] text-slate-400">Սեղմիր՝ ավելացնելու համար</span>
+          </div>
+          <div class="flex flex-wrap gap-1.5 text-[10px] font-bold">
+            <span class="px-2 py-0.5 rounded bg-amber-600 text-white">Սկիզբ</span>
+            <span class="px-2 py-0.5 rounded bg-orange-600 text-white">Զանգված / Փոփոխական</span>
+            <span class="px-2 py-0.5 rounded bg-yellow-400 text-slate-900">Ցիկլ</span>
+            <span class="px-2 py-0.5 rounded bg-green-600 text-white">Գումարում</span>
+            <span class="px-2 py-0.5 rounded bg-violet-600 text-white">Արտածում</span>
+          </div>
+          <div id="scratch-palette" class="space-y-3 pt-1 min-h-[120px]"></div>
+        </div>
+
+        <!-- Workspace + Console -->
+        <div class="order-1 lg:order-2 lg:col-span-7 space-y-4">
+          <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h2 class="text-sm font-extrabold text-slate-900 uppercase tracking-wide">⚙️ Քո ծրագիրը (հավաքիր այստեղ)</h2>
+              <div class="flex items-center gap-2">
+                <button id="btn-blocks-hint" type="button" class="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition">
+                  💡 Հուշում
+                </button>
+                <button id="btn-blocks-clear" type="button" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">
+                  ↺ Մաքրել
+                </button>
+              </div>
+            </div>
+
+            <div id="blocks-hint-box" class="hidden p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs sm:text-sm leading-relaxed"></div>
+
+            <div id="scratch-workspace" class="scratch-dropzone min-h-[220px] p-3.5 sm:p-4 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 space-y-2.5 transition"></div>
+
+            <div id="blocks-feedback" class="hidden p-3.5 rounded-xl border text-xs sm:text-sm font-medium"></div>
+
+            <!-- Action buttons -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
+              <button id="btn-blocks-run" type="button" class="flex-1 py-3 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition">
+                ▶ Աշխատացնել և Ստուգել
+              </button>
+            </div>
+          </div>
+
+          <!-- Simulated Terminal Output -->
+          <div class="bg-slate-950 rounded-2xl border border-slate-800 p-4 text-slate-200 font-mono-code text-xs sm:text-sm space-y-1.5">
+            <div class="flex items-center justify-between text-[11px] text-slate-400 border-b border-slate-800 pb-2">
+              <span>🖥️ Ծրագրի արդյունքը (Console)</span>
+              <span id="blocks-console-status">Սպասում է աշխատացման...</span>
+            </div>
+            <pre id="blocks-console-output" class="pt-1 text-emerald-400 whitespace-pre-wrap min-h-[36px]">// Հավաքիր բլոկները և սեղմիր «Աշխատացնել և Ստուգել»</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: PRACTICAL TASKS + ONECOMPILER ==================== -->
+    <section id="view-practice" class="hidden space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h1 class="text-lg sm:text-xl font-extrabold text-slate-900">Գործնական աշխատանքներ</h1>
+        </div>
+
+        <!-- Task Selector Pills -->
+        <div id="practice-pills" class="flex overflow-x-auto no-scrollbar sm:flex-wrap gap-2 pb-0.5 sm:pb-0"></div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        <!-- Left: Task Statement, Matrix Table, Starter Code, Hint & Solution -->
+        <div id="practice-detail-card" class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4"></div>
+
+        <!-- Right: C++ Compiler (Built-in Editor with Smart Prefix Autocomplete & Bottom Console) -->
+        <div class="lg:col-span-7 bg-slate-900 rounded-2xl border border-slate-800 shadow-sm overflow-hidden flex flex-col">
+          <!-- Compiler Header -->
+          <div class="px-3 sm:px-4 py-2.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between gap-2 text-xs text-slate-300">
+            <span class="font-bold flex items-center gap-2 text-emerald-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+              C++ Կոմպիլյատոր
+            </span>
+            <div class="flex items-center gap-3">
+              <label class="inline-flex items-center gap-1.5 text-[11px] text-slate-300 cursor-pointer select-none">
+                <input id="chk-autocomplete" type="checkbox" checked class="accent-emerald-500 rounded" />
+                <span>Autocomplete</span>
+              </label>
+              <button id="btn-load-task-to-editor" type="button" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 font-bold text-xs transition">
+                ↺ Մաքրել
+              </button>
+            </div>
+          </div>
+
+          <!-- Built-in Mobile-First C++ Editor with Live Prefix Autocomplete & Bottom Console -->
+          <div id="compiler-builtin-wrap" class="flex flex-col">
+            <!-- Dynamic Autocomplete Suggestions Bar (Updates immediately as user types word prefix) -->
+            <div class="px-3 py-2 bg-slate-950 border-b border-slate-800">
+              <div id="autocomplete-bar" class="flex overflow-x-auto no-scrollbar gap-1.5 min-h-[30px] items-center"></div>
+            </div>
+
+            <!-- Code Textarea + Floating IntelliSense Popup -->
+            <div class="relative bg-[#0b1120]">
+              <textarea
+                id="cpp-code-editor"
+                spellcheck="false"
+                autocapitalize="off"
+                autocomplete="off"
+                autocorrect="off"
+                aria-label="C++ կոդի խմբագրիչ"
+                class="w-full h-[260px] sm:h-[310px] p-3.5 sm:p-4 bg-transparent text-emerald-200 font-mono-code text-xs sm:text-sm leading-relaxed focus:outline-none resize-y"
+              ></textarea>
+              <!-- Live Floating Autocomplete Dropdown (appears when typing a word prefix) -->
+              <div id="ac-popup" class="hidden absolute left-3 right-3 sm:right-auto sm:min-w-[240px] bottom-2 z-20 bg-slate-900/95 backdrop-blur-xs border border-sky-500/50 rounded-xl shadow-2xl overflow-hidden">
+                <div class="px-3 py-1.5 bg-slate-800/90 border-b border-slate-700 text-[10px] font-bold text-sky-300 flex items-center justify-between">
+                  <span id="ac-popup-prefix">Առաջարկներ</span>
+                  <span class="text-slate-400">Սեղմիր կամ Tab / Enter</span>
+                </div>
+                <div id="ac-popup-list" class="max-h-[160px] overflow-y-auto divide-y divide-slate-800"></div>
+              </div>
+            </div>
+
+            <!-- Mobile Quick-Symbol Bar -->
+            <div class="px-3 py-2 bg-slate-900 border-t border-slate-800 flex overflow-x-auto no-scrollbar items-center gap-1.5">
+              <span class="text-[10px] font-bold text-slate-500 shrink-0 pr-1">Արագ՝</span>
+              <button type="button" data-quick-ins="{}" class="ac-chip shrink-0">{ }</button>
+              <button type="button" data-quick-ins="[]" class="ac-chip shrink-0">[ ]</button>
+              <button type="button" data-quick-ins=" << " class="ac-chip shrink-0">&lt;&lt;</button>
+              <button type="button" data-quick-ins=";" class="ac-chip shrink-0">;</button>
+              <button type="button" data-quick-ins="cout << " class="ac-chip shrink-0">cout</button>
+              <button type="button" data-quick-ins="endl;" class="ac-chip shrink-0">endl;</button>
+              <button type="button" data-quick-ins="a[i][j]" class="ac-chip shrink-0">a[i][j]</button>
+            </div>
+
+            <!-- Run Controls -->
+            <div class="px-3 sm:px-4 py-2.5 bg-slate-800/80 border-t border-slate-700 flex flex-wrap items-center justify-between gap-2">
+              <button id="btn-run-cpp" type="button" class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-sm transition">
+                ▶ Աշխատացնել (Run C++)
+              </button>
+              <button id="btn-clear-console" type="button" class="px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold text-xs transition">
+                Մաքրել կոնսոլը
+              </button>
+            </div>
+
+            <!-- BOTTOM Console Panel -->
+            <div class="bg-black border-t-2 border-slate-700 p-3.5 sm:p-4 font-mono-code text-xs sm:text-sm space-y-2">
+              <div class="flex items-center justify-between gap-2 text-[11px] text-slate-400">
+                <span class="font-bold text-slate-300 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                  Console
+                </span>
+                <span id="ide-console-status">Պատրաստ է</span>
+              </div>
+              <pre id="ide-console-output" class="text-emerald-400 whitespace-pre-wrap min-h-[76px] max-h-[200px] overflow-y-auto leading-relaxed">// Սեղմիր «▶ Աշխատացնել (Run C++)»՝ արդյունքն այստեղ տեսնելու համար</pre>
+              <div id="ide-match-badge" class="hidden px-3 py-2 rounded-xl text-xs font-sans font-bold"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 3: INTERACTIVE THEORY & VISUALIZER ==================== -->
+    <section id="view-theory" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Interactive 1D Array Visualizer -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-extrabold text-slate-900">1. Միաչափ զանգված (1D)</h2>
+            <span class="text-xs font-mono-code bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-200">int arr[5];</span>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">
+            Զանգվածը նույնատիպ տվյալների հավաքածու է։ C++-ում դասիչները (ինդեքսները) միշտ սկսվում են <strong>0-ից</strong>։ Սեղմեք ցանկացած վանդակի վրա՝ արժեքը տեսնելու կամ փոխելու համար։
+          </p>
+
+          <div id="vis-1d-boxes" class="grid grid-cols-5 gap-1.5 sm:gap-2 pt-2"></div>
+
+          <div class="p-3.5 rounded-xl bg-slate-900 text-slate-100 font-mono-code text-xs sm:text-sm space-y-1">
+            <div id="vis-1d-code-line" class="text-emerald-400">arr[2] = 30; // 3-րդ տարրը</div>
+            <div class="text-slate-400 text-xs">Սեղմեք վանդակի վրա, ապա փորձեք ավելացնել +1, ինչպես դասագրքի օրինակում։</div>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button id="btn-vis-1d-inc" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition">
+              Բոլոր տարրերը մեծացնել +1-ով
+            </button>
+            <button id="btn-vis-1d-reset" type="button" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">
+              Վերականգնել
+            </button>
+          </div>
+        </div>
+
+        <!-- Interactive 2D Array (Matrix) Visualizer -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-extrabold text-slate-900">2. Երկչափ զանգված / Մատրից (2D)</h2>
+            <span class="text-xs font-mono-code bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg border border-blue-200">int A[3][4];</span>
+          </div>
+          <p class="text-sm text-slate-600 leading-relaxed">
+            Առաջին դասիչը ցույց է տալիս <strong>տողի</strong> համարը, երկրորդը՝ <strong>սյան</strong> համարը՝ <code class="font-mono-code bg-slate-100 px-1 rounded">A[տող][սյուն]</code>։ Սեղմեք վանդակի վրա՝ դասիչը տեսնելու համար։
+          </p>
+
+          <div id="vis-2d-grid" class="overflow-x-auto"></div>
+
+          <div class="p-3.5 rounded-xl bg-slate-900 text-slate-100 font-mono-code text-xs sm:text-sm flex flex-wrap items-center justify-between gap-2">
+            <span id="vis-2d-readout" class="text-sky-400">A[0][0] == 12 (Տող 0, Սյուն 0)</span>
+            <span class="text-slate-400 text-xs">Ընդամենը՝ 3 × 4 = 12 տարր</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Syntax Cheat Sheet -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <h3 class="text-base font-extrabold text-slate-900 mb-3">Համառոտ ուղեցույց (Թեմա 8)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+            <div class="font-bold text-slate-900">Հայտարարում և սկզբնարժեքավորում</div>
+            <pre class="font-mono-code text-xs bg-slate-900 text-emerald-300 p-2.5 rounded-lg overflow-x-auto">int arr[4] = {12, 6, 4, 2};
+float temp[7];
+int m[3][2] = {{1,2},{4,5},{7,8}};</pre>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+            <div class="font-bold text-slate-900">Տարրին դիմելը և փոխելը</div>
+            <pre class="font-mono-code text-xs bg-slate-900 text-sky-300 p-2.5 rounded-lg overflow-x-auto">arr[2] = 35; // 3-րդ տարրը
+cout &lt;&lt; grades[2][0];
+// 3-րդ տող, 1-ին սյուն</pre>
+          </div>
+          <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+            <div class="font-bold text-slate-900">Արտածում կրկնակի ցիկլով</div>
+            <pre class="font-mono-code text-xs bg-slate-900 text-amber-300 p-2.5 rounded-lg overflow-x-auto">for(int i=0; i&lt;rows; i++) {
+  for(int j=0; j&lt;cols; j++)
+    cout &lt;&lt; a[i][j] &lt;&lt; " ";
+  cout &lt;&lt; endl;
+}</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-5 sm:bottom-5 z-50 hidden px-4 py-3 sm:py-2.5 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-semibold shadow-lg text-center sm:text-left"></div>
+
+  <!-- Out of Hearts Modal -->
+  <div id="hearts-modal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-xl border border-slate-200">
+      <div class="text-4xl">💔</div>
+      <h3 class="text-lg font-extrabold text-slate-900">Փորձերն ավարտվեցին</h3>
+      <p class="text-sm text-slate-600">Ոչինչ, սխալվելը սովորելու մի մասն է։ Վերականգնիր 5 սրտիկները և շարունակիր դասը։</p>
+      <button id="btn-refill-hearts" type="button" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition">
+        ♥ Վերականգնել 5 սրտիկ
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. ՈՒՍՈՒՑՉԻ ՀԱՄԱՐ ՀԵՇՏ ԽՄԲԱԳՐՎՈՂ ԴԱՍԵՐԻ ԵՎ ՀԱՐՑԵՐԻ ՑՈՒՑԱԿԸ (Թեմա 8)
+    // =========================================================================
+    const MODULES = [
+      {
+        id: 'mod1',
+        title: '1. Միաչափ զանգվածներ',
+        steps: [
+          {
+            type: 'info',
+            badge: 'Տեսություն',
+            title: 'Ի՞նչ է զանգվածը C++-ում',
+            body: 'Զանգվածը նույնատիպ տվյալների հավաքածու է, որը զբաղեցնում է հիշողության հաջորդական անընդհատ տարածք։ Այն օգտագործում ենք, երբ պետք է պահել շատ տվյալներ՝ օրինակ սովորողների գնահատականները կամ շաբաթվա օրերի ջերմաստիճանները։',
+            code: 'int grades[5] = {9, 8, 6, 7, 10};\n// grades[0] = 9, grades[1] = 8 ...',
+            note: 'Հիշի՛ր․ C++-ում զանգվածի տարրերի համարակալումը (դասիչը / ինդեքսը) միշտ սկսվում է 0-ից։',
+            hint: 'Պարզապես կարդա տեսությունը և սեղմիր «Շարունակել»։'
+          },
+          {
+            type: 'mcq',
+            badge: 'Հարց 1 (Դասագիրք)',
+            question: 'Ի՞նչ է զանգվածը, և ո՞ր թվից է սկսվում նրա տարրերի համարակալումը C++-ում։',
+            options: [
+              'Տարբեր տիպի տվյալների խումբ, համարակալումը սկսվում է 1-ից',
+              'Նույնատիպ տվյալների հավաքածու, համարակալումը սկսվում է 0-ից',
+              'Միայն տեքստային տվյալների ցուցակ, համարակալումը սկսվում է 0-ից'
+            ],
+            correctIndex: 1,
+            hint: 'Դասագրքի էջ 61-ում նշված է՝ նույնատիպ տվյալներ և դասիչ՝ սկսած 0-ից։',
+            explanation: 'Ճիշտ է։ Զանգվածը պահում է նույն տիպի տվյալներ, իսկ առաջին տարրի դասիչը միշտ 0 է։'
+          },
+          {
+            type: 'mcq',
+            badge: 'Հարց 2 (Դասագիրք)',
+            question: 'Ինչպե՞ս է ճիշտ հայտարարել 5 տարրից բաղկացած իրական (double) տիպի միաչափ զանգված։',
+            options: [
+              'double A[5];',
+              'A double[5];',
+              'double A(5);',
+              'array double A[5];'
+            ],
+            correctIndex: 0,
+            hint: 'Ընդհանուր տեսքն է՝ <տիպ> <անուն>[երկարություն];',
+            explanation: 'Գերազանց է։ Քառակուսի փակագծերի մեջ գրվում է զանգվածի երկարությունը՝ double A[5];'
+          },
+          {
+            type: 'drag',
+            badge: 'Drag & Drop կոդ',
+            prompt: 'Տեղադրիր բաց թողնված մասերը, որպեսզի հայտարարես 4 տարրանոց զանգված և փոխես 3-րդ տարրը (դասիչ 2)՝ դարձնելով 35։',
+            lines: [
+              { parts: [{ text: '' }, { slot: 0 }, { text: ' arr[' }, { slot: 1 }, { text: '] = {10, 20, 30, 40};' }] },
+              { parts: [{ text: 'arr[' }, { slot: 2 }, { text: '] = 35;' }] },
+              { parts: [{ text: '' }, { slot: 3 }, { text: ' << arr[2];' }] }
+            ],
+            answers: ['int', '4', '2', 'cout'],
+            bank: ['int', '4', '2', 'cout', '3', 'cin'],
+            hint: 'Ամբողջ թվերի տիպը int է, զանգվածում կա 4 թիվ, 3-րդ տարրի դասիչը 2 է, իսկ արտածելու համար օգտագործում ենք cout։',
+            explanation: 'Հրաշալի է։ arr[2]-ը 3-րդ տարրն է (քանի որ հաշվարկը 0, 1, 2 է)։'
+          },
+          {
+            type: 'mcq',
+            badge: 'Գործնական կիրառում',
+            question: 'Տրված է int grades[5] = {9, 8, 6, 7, 10}; զանգվածը։ Ի՞նչ կարտածի cout << grades[1] + grades[4]; հրամանը։',
+            options: ['17', '18', '16', '19'],
+            correctIndex: 1,
+            hint: 'Հաշվիր 0-ից՝ grades[0]=9, grades[1]=8, grades[2]=6, grades[3]=7, grades[4]=10։',
+            explanation: 'Ճիշտ է։ grades[1] = 8, իսկ grades[4] = 10, ուստի 8 + 10 = 18։'
+          },
+          {
+            type: 'drag',
+            badge: 'Drag & Drop կոդ (էջ 63)',
+            prompt: 'Լրացրու ցիկլը, որպեսզի զանգվածի յուրաքանչյուր տարր մեծանա 1-ով (դասագրքի էջ 63-ի խնդիրը)։',
+            lines: [
+              { parts: [{ text: 'for (int i = 0; i < n; ' }, { slot: 0 }, { text: ') {' }] },
+              { parts: [{ text: '    arr[' }, { slot: 1 }, { text: '] = arr[i] + ' }, { slot: 2 }, { text: ';' }] },
+              { parts: [{ text: '}' }] }
+            ],
+            answers: ['++i', 'i', '1'],
+            bank: ['++i', 'i', '1', 'n', '0'],
+            hint: 'Ցիկլի հաշվիչը մեծանում է 1-ով (++i), և յուրաքանչյուր i-րդ տարրին գումարում ենք 1։',
+            explanation: 'Ապրե՛ս։ Սա հենց դասագրքի էջ 63-ի ծրագրի հիմնական ցիկլն է։'
+          }
+        ]
+      },
+      {
+        id: 'mod2',
+        title: '2. Երկչափ զանգվածներ (Մատրից)',
+        steps: [
+          {
+            type: 'info',
+            badge: 'Տեսություն',
+            title: 'Երկչափ զանգված կամ մատրից',
+            body: 'Եթե միաչափ զանգվածը նման է տետրի մեկ տողի, ապա երկչափ զանգվածը նման է ամբողջ աղյուսակի (մատրիցի)։ Առաջին դասիչը տողի համարն է, երկրորդը՝ սյան համարը՝ [տող][սյուն]։',
+            code: 'int grades[3][3] = {\n  {9, 8, 10}, // Տող 0 (Սովորող 1)\n  {6, 4, 7},  // Տող 1 (Սովորող 2)\n  {5, 6, 7}   // Տող 2 (Սովորող 3)\n};',
+            note: 'grades[2][0] տարրը գտնվում է 3-րդ տողի (դասիչ 2) 1-ին սյունում (դասիչ 0) և հավասար է 5-ի։',
+            hint: 'Հիշիր՝ միշտ նախ տողի համարն է, հետո՝ սյան համարը։'
+          },
+          {
+            type: 'mcq',
+            badge: 'Հարց 3 (Դասագիրք)',
+            question: 'Քանի՞ տարրից է բաղկացած int A[3][4]; երկչափ զանգվածը, և ի՞նչ են ցույց տալիս առաջին ու երկրորդ դասիչները։',
+            options: [
+              '7 տարր․ առաջինը սյունն է, երկրորդը՝ տողը',
+              '12 տարր․ առաջինը տողն է, երկրորդը՝ սյունը',
+              '12 տարր․ առաջինը սյունն է, երկրորդը՝ տողը',
+              '16 տարր․ երկուսն էլ տողերն են'
+            ],
+            correctIndex: 1,
+            hint: '3 տող և 4 սյուն՝ 3 × 4 = 12։ Հերթականությունը՝ [տող][սյուն]։',
+            explanation: 'Ճիշտ է։ A[3][4]-ը ունի 3 × 4 = 12 տարր, և միշտ գրվում է [տող][սյուն] հերթականությամբ։'
+          },
+          {
+            type: 'mcq',
+            badge: 'Գործնական 1 (էջ 67)',
+            question: 'Տրված է 4×3 մատրից՝ {{1,2,3}, {4,5,6}, {7,8,9}, {10,11,12}}։ Ո՞ր արտահայտությունն է արտածում 3-րդ տողի առաջին տարրը (7)։',
+            options: [
+              'cout << a[3][1];',
+              'cout << a[2][0];',
+              'cout << a[0][2];',
+              'cout << a[2][1];'
+            ],
+            correctIndex: 1,
+            hint: 'Քանի որ հաշվում ենք 0-ից՝ 3-րդ տողի դասիչը 2 է, իսկ առաջին սյան դասիչը՝ 0։',
+            explanation: 'Ճիշտ է։ a[2][0]-ը 3-րդ տողի 1-ին տարրն է՝ 7։'
+          },
+          {
+            type: 'mcq',
+            badge: 'Գործնական 2 (էջ 67)',
+            question: '3×3 չափանի մատրիցում՝ {{17,25,3}, {4,0,6}, {21,8,-17}}, որո՞նք են առաջին և վերջին տարրերի դասիչները։',
+            options: [
+              'a[1][1] և a[3][3]',
+              'a[0][0] և a[2][2]',
+              'a[0][0] և a[3][3]',
+              'a[0][2] և a[2][0]'
+            ],
+            correctIndex: 1,
+            hint: '3×3 մատրիցի դասիչները 0, 1, 2 են։ Առաջինը վերին ձախն է (0,0), վերջինը՝ ստորին աջը (2,2)։',
+            explanation: 'Գերազանց է։ a[0][0] = 17, իսկ a[2][2] = -17։'
+          },
+          {
+            type: 'drag',
+            badge: 'Drag & Drop կոդ (էջ 65)',
+            prompt: 'Լրացրու կոդը՝ 3×2 չափանի երկչափ զանգված հայտարարելու և 2-րդ տողի 2-րդ տարրը (4) արտածելու համար։',
+            lines: [
+              { parts: [{ text: 'int numbers[' }, { slot: 0 }, { text: '][' }, { slot: 1 }, { text: '] = {{1, 2}, {3, 4}, {5, 6}};' }] },
+              { parts: [{ text: 'cout << numbers[' }, { slot: 2 }, { text: '][' }, { slot: 3 }, { text: '];' }] }
+            ],
+            answers: ['3', '2', '1', '1'],
+            bank: ['3', '2', '1', '1', '0', '4'],
+            hint: 'Զանգվածն ունի 3 տող և 2 սյուն։ 4 թիվը գտնվում է դասիչ 1 տողում և դասիչ 1 սյունում։',
+            explanation: 'Հրաշալի է։ numbers[1][1]-ը հենց 4-ն է։'
+          }
+        ]
+      },
+      {
+        id: 'mod3',
+        title: '3. Ցիկլեր և Գումարներ',
+        steps: [
+          {
+            type: 'mcq',
+            badge: 'Գործնական 3 (էջ 67–68)',
+            question: 'Տրված է int matrix[2][2] = {{1, 2}, {3, 4}}; և երկու ներդրված for ցիկլ (i=0..1, j=0..1), որտեղ ամեն ներքին ցիկլից հետո կա cout << endl;։ Ի՞նչ կարտածվի էկրանին։',
+            options: [
+              '1 2 3 4 (մեկ տողում)',
+              '1 2 և նոր տողում՝ 3 4',
+              '1 3 և նոր տողում՝ 2 4',
+              '4 3 և նոր տողում՝ 2 1'
+            ],
+            correctIndex: 1,
+            hint: 'Արտաքին ցիկլը (i) անցնում է տողերով, իսկ ներքին ցիկլից հետո endl-ը տեղափոխում է նոր տող։',
+            explanation: 'Ճիշտ է։ Արտածվում է աղյուսակի տեսքով՝ առաջին տողում 1 2, երկրորդում՝ 3 4։'
+          },
+          {
+            type: 'drag',
+            badge: 'Drag & Drop կոդ (Գործնական 4)',
+            prompt: 'Լրացրու կոդը՝ 3×3 մատրիցի յուրաքանչյուր ՏՈՂԻ տարրերի գումարը հաշվելու համար (ելքը՝ 6, 15, 24)։',
+            lines: [
+              { parts: [{ text: 'for (int i = 0; i < 3; i++) {' }] },
+              { parts: [{ text: '    int sum = ' }, { slot: 0 }, { text: ';' }] },
+              { parts: [{ text: '    for (int j = 0; j < 3; j++) {' }] },
+              { parts: [{ text: '        sum += a[' }, { slot: 1 }, { text: '][' }, { slot: 2 }, { text: '];' }] },
+              { parts: [{ text: '    }' }] },
+              { parts: [{ text: '    cout << ' }, { slot: 3 }, { text: ' << " ";' }] },
+              { parts: [{ text: '}' }] }
+            ],
+            answers: ['0', 'i', 'j', 'sum'],
+            bank: ['0', 'i', 'j', 'sum', '1', '3'],
+            hint: 'Ամեն նոր տողի սկզբում sum-ը զրոյացնում ենք (0), ապա գումարում ենք a[i][j]-երը և տպում sum-ը։',
+            explanation: 'Գերազանց է։ 1+2+3=6, 4+5+6=15, 7+8+9=24։'
+          },
+          {
+            type: 'drag',
+            badge: 'Drag & Drop կոդ (Գործնական 5)',
+            prompt: 'Իսկ հիմա լրացրու կոդը՝ 3×3 մատրիցի յուրաքանչյուր ՍՅԱՆ տարրերի գումարը հաշվելու համար (ելքը՝ 12, 15, 18)։',
+            lines: [
+              { parts: [{ text: 'for (int j = 0; j < 3; j++) {' }] },
+              { parts: [{ text: '    int sum = 0;' }] },
+              { parts: [{ text: '    for (int i = 0; i < 3; ' }, { slot: 0 }, { text: ') {' }] },
+              { parts: [{ text: '        sum += a[' }, { slot: 1 }, { text: '][' }, { slot: 2 }, { text: '];' }] },
+              { parts: [{ text: '    }' }] },
+              { parts: [{ text: '    cout << sum << " ";' }] },
+              { parts: [{ text: '}' }] }
+            ],
+            answers: ['i++', 'i', 'j'],
+            bank: ['i++', 'i', 'j', 'j++', '0'],
+            hint: 'Սյունով գումարելիս արտաքին ցիկլը j-ն է (սյուն), ներքինը՝ i-ն (տող), բայց զանգվածում միշտ գրում ենք a[տող][սյուն], այսինքն՝ a[i][j]։',
+            explanation: 'Կատարյալ է։ 1+4+7=12, 2+5+8=15, 3+6+9=18։ Հիմա կարող ես փորձել կոդը «Գործնական + Կոմպիլյատոր» բաժնում։'
+          }
+        ]
+      }
+    ];
+
+    // =========================================================================
+    // 2. ԴԱՍԱԳՐՔԻ 5 ԳՈՐԾՆԱԿԱՆ ԱՇԽԱՏԱՆՔՆԵՐԸ (ԷՋ 67–68)
+    // =========================================================================
+    const PRACTICAL_TASKS = [
+      {
+        id: 1,
+        shortTitle: 'Գործնական 1',
+        title: '3-րդ տողի առաջին տարրը (4×3 մատրից)',
+        description: 'Գրե՛ք ծրագիր, որը կհայտարարի տրված 4×3 երկչափ զանգվածը և կարտածի 3-րդ տողի առաջին տարրը։',
+        matrix: [
+          [1, 2, 3],
+          [4, 5, 6],
+          [7, 8, 9],
+          [10, 11, 12]
+        ],
+        expectedOutput: '7',
+        hint: 'Քանի որ դասիչները սկսվում են 0-ից, 3-րդ տողը ունի 2 դասիչ, իսկ առաջին սյունը՝ 0 դասիչ։ Այսինքն՝ a[2][0]։',
+        starterCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Գրիր քո C++ կոդը այստեղ\n    \n    return 0;\n}`,
+        solutionCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    int a[4][3] = {\n        {1, 2, 3},\n        {4, 5, 6},\n        {7, 8, 9},\n        {10, 11, 12}\n    };\n    cout << a[2][0] << endl;\n    return 0;\n}`
+      },
+      {
+        id: 2,
+        shortTitle: 'Գործնական 2',
+        title: 'Առաջին և վերջին տարրերը (3×3 մատրից)',
+        description: 'Գրե՛ք ծրագիր, որը կհայտարարի տրված 3×3 չափանի երկչափ զանգվածը և կարտածի առաջին և վերջին տարրերը։',
+        matrix: [
+          [17, 25, 3],
+          [4, 0, 6],
+          [21, 8, -17]
+        ],
+        expectedOutput: '17 -17',
+        hint: 'Առաջին տարրը a[0][0]-ն է, իսկ 3×3 մատրիցի վերջին տարրը՝ a[2][2]-ը։',
+        starterCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Գրիր քո C++ կոդը այստեղ\n    \n    return 0;\n}`,
+        solutionCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    int a[3][3] = {\n        {17, 25, 3},\n        {4, 0, 6},\n        {21, 8, -17}\n    };\n    cout << a[0][0] << " " << a[2][2] << endl;\n    return 0;\n}`
+      },
+      {
+        id: 3,
+        shortTitle: 'Գործնական 3',
+        title: '2×2 մատրիցի արտածում կրկնակի ցիկլով',
+        description: 'Փորձարկե՛ք դասագրքի ծրագրային հատվածը կոմպիլյատորում և ստուգեք, թե ինչպես է 2×2 երկչափ զանգվածը արտածվում աղյուսակի տեսքով։',
+        matrix: [
+          [1, 2],
+          [3, 4]
+        ],
+        expectedOutput: '1 2\n3 4',
+        hint: 'Արտաքին ցիկլը (i) անցնում է տողերով, ներքին ցիկլը (j)՝ տվյալ տողի սյուներով, իսկ cout << endl;-ը անցնում է նոր տող։',
+        starterCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Գրիր քո C++ կոդը այստեղ\n    \n    return 0;\n}`,
+        solutionCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    int matrix[2][2] = {{1, 2}, {3, 4}};\n    for (int i = 0; i < 2; i++) {\n        for (int j = 0; j < 2; j++) {\n            cout << matrix[i][j] << " ";\n        }\n        cout << endl;\n    }\n    return 0;\n}`
+      },
+      {
+        id: 4,
+        shortTitle: 'Գործնական 4',
+        title: 'Յուրաքանչյուր տողի տարրերի գումարը',
+        description: 'Գրե՛ք ծրագիր, որը կհաշվի և կարտածի տրված 3×3 երկչափ զանգվածի յուրաքանչյուր տողի տարրերի գումարը։',
+        matrix: [
+          [1, 2, 3],
+          [4, 5, 6],
+          [7, 8, 9]
+        ],
+        expectedOutput: '6 15 24',
+        hint: 'Արտաքին ցիկլի ներսում ամեն տողի համար հայտարարիր int sum = 0;, ներքին ցիկլում գումարիր a[i][j]-երը և տպիր sum-ը։',
+        starterCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Գրիր քո C++ կոդը այստեղ\n    \n    return 0;\n}`,
+        solutionCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    int a[3][3] = {\n        {1, 2, 3},\n        {4, 5, 6},\n        {7, 8, 9}\n    };\n    for (int i = 0; i < 3; i++) {\n        int sum = 0;\n        for (int j = 0; j < 3; j++) {\n            sum += a[i][j];\n        }\n        cout << sum << " ";\n    }\n    return 0;\n}`
+      },
+      {
+        id: 5,
+        shortTitle: 'Գործնական 5',
+        title: 'Յուրաքանչյուր սյան տարրերի գումարը',
+        description: 'Գրե՛ք ծրագիր, որը կհաշվի և կարտածի տրված 3×3 երկչափ զանգվածի յուրաքանչյուր սյան տարրերի գումարը։',
+        matrix: [
+          [1, 2, 3],
+          [4, 5, 6],
+          [7, 8, 9]
+        ],
+        expectedOutput: '12 15 18',
+        hint: 'Արտաքին ցիկլը պետք է անցնի սյուներով (j = 0..2), իսկ ներքինը՝ տողերով (i = 0..2), գումարելով a[i][j] տարրերը։',
+        starterCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    // Գրիր քո C++ կոդը այստեղ\n    \n    return 0;\n}`,
+        solutionCode: `#include <iostream>\nusing namespace std;\n\nint main() {\n    int a[3][3] = {\n        {1, 2, 3},\n        {4, 5, 6},\n        {7, 8, 9}\n    };\n    for (int j = 0; j < 3; j++) {\n        int sum = 0;\n        for (int i = 0; i < 3; i++) {\n            sum += a[i][j];\n        }\n        cout << sum << " ";\n    }\n    return 0;\n}`
+      }
+    ];
+
+    // =========================================================================
+    // 2.5 SCRATCH-STYLE BLOCK PUZZLES FOR ALL 5 PRACTICAL TASKS (ԷՋ 67–68)
+    // =========================================================================
+    const BLOCK_TASKS = [
+      {
+        id: 1,
+        shortTitle: 'Գործնական 1',
+        title: 'Հավաքիր ծրագիրը՝ 3-րդ տողի առաջին տարրը (7)',
+        description: 'Դասավորիր բլոկները այնպես, որ հայտարարվի 4×3 երկչափ զանգվածը և արտածվի 3-րդ տողի առաջին տարրը (ուշադրություն․ կա 1 ավելորդ սխալ բլոկ)։',
+        matrix: [[1,2,3],[4,5,6],[7,8,9],[10,11,12]],
+        expectedOutput: '7',
+        hint: 'Նախ սկսում ենք int main()-ով, հետո հայտարարում ենք a[4][3] զանգվածը, ապա արտածում ենք a[2][0]-ը (3-րդ տողը դասիչ 2-ն է, 1-ին սյունը՝ 0-ն) և վերջացնում return 0;-ով։',
+        solutionOrder: ['b1_main', 'b1_arr', 'b1_out', 'b1_ret'],
+        blocks: [
+          { id: 'b1_arr',  cat: 'var',   indent: 1, code: 'int a[4][3] = {{1,2,3},{4,5,6},{7,8,9},{10,11,12}};' },
+          { id: 'b1_bad',  cat: 'out',   indent: 1, code: 'cout << a[3][1] << endl;', distractor: true },
+          { id: 'b1_ret',  cat: 'event', indent: 0, code: 'return 0; }', noNotch: true },
+          { id: 'b1_main', cat: 'event', indent: 0, code: 'int main() {', hat: true },
+          { id: 'b1_out',  cat: 'out',   indent: 1, code: 'cout << a[2][0] << endl;' }
+        ]
+      },
+      {
+        id: 2,
+        shortTitle: 'Գործնական 2',
+        title: 'Հավաքիր ծրագիրը՝ առաջին և վերջին տարրերը (17 և -17)',
+        description: 'Դասավորիր բլոկները 3×3 մատրիցի առաջին և վերջին տարրերը արտածելու համար։',
+        matrix: [[17,25,3],[4,0,6],[21,8,-17]],
+        expectedOutput: '17 -17',
+        hint: '3×3 զանգվածում առաջին տարրը a[0][0]-ն է, վերջինը՝ a[2][2]-ը։ Զգույշ եղիր՝ a[3][3] գոյություն չունի։',
+        solutionOrder: ['b2_main', 'b2_arr', 'b2_out', 'b2_ret'],
+        blocks: [
+          { id: 'b2_out',  cat: 'out',   indent: 1, code: 'cout << a[0][0] << " " << a[2][2] << endl;' },
+          { id: 'b2_main', cat: 'event', indent: 0, code: 'int main() {', hat: true },
+          { id: 'b2_bad',  cat: 'out',   indent: 1, code: 'cout << a[1][1] << " " << a[3][3] << endl;', distractor: true },
+          { id: 'b2_arr',  cat: 'var',   indent: 1, code: 'int a[3][3] = {{17,25,3},{4,0,6},{21,8,-17}};' },
+          { id: 'b2_ret',  cat: 'event', indent: 0, code: 'return 0; }', noNotch: true }
+        ]
+      },
+      {
+        id: 3,
+        shortTitle: 'Գործնական 3',
+        title: 'Հավաքիր կրկնակի ցիկլը՝ 2×2 մատրիցի արտածում',
+        description: 'Դասավորիր բլոկները, որպեսզի 2×2 մատրիցը արտածվի աղյուսակի տեսքով (առաջին տողում՝ 1 2, երկրորդում՝ 3 4)։',
+        matrix: [[1,2],[3,4]],
+        expectedOutput: '1 2\n3 4',
+        hint: 'Նախ հայտարարում ենք matrix[2][2]-ը, հետո արտաքին ցիկլ (i), ներսում՝ ներքին ցիկլ (j), արտածում ենք matrix[i][j]-ը, փակում ներքին ցիկլը, տպում endl և փակում արտաքին ցիկլը։',
+        solutionOrder: ['b3_arr', 'b3_fori', 'b3_forj', 'b3_cout', 'b3_endj', 'b3_endl', 'b3_endi'],
+        blocks: [
+          { id: 'b3_cout', cat: 'out',  indent: 2, code: 'cout << matrix[i][j] << " ";' },
+          { id: 'b3_fori', cat: 'ctrl', indent: 0, code: 'for (int i = 0; i < 2; i++) {' },
+          { id: 'b3_endl', cat: 'out',  indent: 1, code: 'cout << endl;' },
+          { id: 'b3_arr',  cat: 'var',  indent: 0, code: 'int matrix[2][2] = {{1, 2}, {3, 4}};', hat: true },
+          { id: 'b3_forj', cat: 'ctrl', indent: 1, code: 'for (int j = 0; j < 2; j++) {' },
+          { id: 'b3_endj', cat: 'ctrl', indent: 1, code: '} // ավարտ j ցիկլի' },
+          { id: 'b3_endi', cat: 'ctrl', indent: 0, code: '} // ավարտ i ցիկլի', noNotch: true }
+        ]
+      },
+      {
+        id: 4,
+        shortTitle: 'Գործնական 4',
+        title: 'Յուրաքանչյուր ՏՈՂԻ տարրերի գումարը (6, 15, 24)',
+        description: 'Հավաքիր բլոկները՝ 3×3 մատրիցի ամեն տողի տարրերի գումարը հաշվելու և արտածելու համար։',
+        matrix: [[1,2,3],[4,5,6],[7,8,9]],
+        expectedOutput: '6 15 24',
+        hint: 'Արտաքին ցիկլը տողերն են (i)։ Ամեն տողի սկզբում sum-ը դարձնում ենք 0, ներքին ցիկլով (j) գումարում ենք a[i][j]-երը, փակում j ցիկլը և տպում sum-ը։',
+        solutionOrder: ['b4_fori', 'b4_sum0', 'b4_forj', 'b4_add', 'b4_endj', 'b4_out', 'b4_endi'],
+        blocks: [
+          { id: 'b4_add',  cat: 'op',   indent: 2, code: 'sum += a[i][j];' },
+          { id: 'b4_out',  cat: 'out',  indent: 1, code: 'cout << sum << " ";' },
+          { id: 'b4_fori', cat: 'ctrl', indent: 0, code: 'for (int i = 0; i < 3; i++) {', hat: true },
+          { id: 'b4_endj', cat: 'ctrl', indent: 1, code: '} // ավարտ j ցիկլի' },
+          { id: 'b4_sum0', cat: 'var',  indent: 1, code: 'int sum = 0;' },
+          { id: 'b4_endi', cat: 'ctrl', indent: 0, code: '} // ավարտ i ցիկլի', noNotch: true },
+          { id: 'b4_forj', cat: 'ctrl', indent: 1, code: 'for (int j = 0; j < 3; j++) {' }
+        ]
+      },
+      {
+        id: 5,
+        shortTitle: 'Գործնական 5',
+        title: 'Յուրաքանչյուր ՍՅԱՆ տարրերի գումարը (12, 15, 18)',
+        description: 'Հավաքիր բլոկները՝ 3×3 մատրիցի ամեն սյան տարրերի գումարը հաշվելու համար (ուշադրություն․ արտաքին ցիկլը սյուներն են՝ j)։',
+        matrix: [[1,2,3],[4,5,6],[7,8,9]],
+        expectedOutput: '12 15 18',
+        hint: 'Սյունով գումարելիս նախ բացում ենք j ցիկլը (սյուներ), դնում int sum = 0;, հետո բացում i ցիկլը (տողեր), գումարում a[i][j]-երը, փակում i ցիկլը և տպում sum-ը։',
+        solutionOrder: ['b5_forj', 'b5_sum0', 'b5_fori', 'b5_add', 'b5_endi', 'b5_out', 'b5_endj'],
+        blocks: [
+          { id: 'b5_fori', cat: 'ctrl', indent: 1, code: 'for (int i = 0; i < 3; i++) {' },
+          { id: 'b5_sum0', cat: 'var',  indent: 1, code: 'int sum = 0;' },
+          { id: 'b5_out',  cat: 'out',  indent: 1, code: 'cout << sum << " ";' },
+          { id: 'b5_forj', cat: 'ctrl', indent: 0, code: 'for (int j = 0; j < 3; j++) {', hat: true },
+          { id: 'b5_add',  cat: 'op',   indent: 2, code: 'sum += a[i][j];' },
+          { id: 'b5_endj', cat: 'ctrl', indent: 0, code: '} // ավարտ j ցիկլի', noNotch: true },
+          { id: 'b5_endi', cat: 'ctrl', indent: 1, code: '} // ավարտ i ցիկլի' }
+        ]
+      }
+    ];
+
+    // =========================================================================
+    // 3. APP STATE
+    // =========================================================================
+    const state = {
+      activeTab: 'lessons',
+      moduleIndex: 0,
+      stepIndex: 0,
+      hearts: 5,
+      xp: 0,
+      completedSteps: {}, // key: `${modId}_${stepIdx}`
+      selectedMcq: null,
+      slotValues: [], // for drag & drop: array of { text, bankIndex } or null
+      stepChecked: false,
+      stepPassed: false,
+      activePracticeId: 1,
+      activeBlockTaskId: 1,
+      blockWorkspace: {}, // taskId -> array of block ids
+      solvedBlockTasks: {},
+      blockCheckedStatus: null, // null | 'correct' | 'wrong'
+      vis1d: [10, 20, 30, 40, 50],
+      vis1dSelected: 2,
+      vis2d: [
+        [12, 0, 7, 9],
+        [3, 27, 0, 7],
+        [15, 21, 5, 6]
+      ],
+      vis2dSelected: { r: 0, c: 0 }
+    };
+
+    function loadProgress() {
+      try {
+        const saved = localStorage.getItem('cpp_tema8_state_v1');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (typeof parsed.xp === 'number') state.xp = parsed.xp;
+          if (parsed.completedSteps && typeof parsed.completedSteps === 'object') {
+            state.completedSteps = parsed.completedSteps;
+          }
+          if (parsed.solvedBlockTasks && typeof parsed.solvedBlockTasks === 'object') {
+            state.solvedBlockTasks = parsed.solvedBlockTasks;
+          }
+        }
+      } catch (e) {
+        // Ignore storage errors in restricted environments
+      }
+    }
+
+    function saveProgress() {
+      try {
+        localStorage.setItem('cpp_tema8_state_v1', JSON.stringify({
+          xp: state.xp,
+          completedSteps: state.completedSteps,
+          solvedBlockTasks: state.solvedBlockTasks
+        }));
+      } catch (e) {
+        // Ignore storage errors
+      }
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => el.classList.add('hidden'), 2400);
+    }
+
+    function copyText(text, successMsg) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast(successMsg)).catch(() => fallbackCopy(text, successMsg));
+      } else {
+        fallbackCopy(text, successMsg);
+      }
+    }
+
+    function fallbackCopy(text, successMsg) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg);
+      } catch (e) {
+        showToast('Չհաջողվեց պատճենել');
+      }
+      document.body.removeChild(ta);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // =========================================================================
+    // 4. NAVIGATION TABS
+    // =========================================================================
+    function switchTab(tabName) {
+      state.activeTab = tabName;
+      ['lessons', 'blocks', 'practice', 'theory'].forEach(t => {
+        const view = document.getElementById('view-' + t);
+        const btn = document.getElementById('tab-' + t);
+        if (t === tabName) {
+          view.classList.remove('hidden');
+          btn.className = 'nav-tab px-1.5 sm:px-3 py-2 rounded-xl text-[11px] sm:text-sm font-semibold transition text-center bg-emerald-50 text-emerald-700 border border-emerald-200';
+        } else {
+          view.classList.add('hidden');
+          btn.className = 'nav-tab px-1.5 sm:px-3 py-2 rounded-xl text-[11px] sm:text-sm font-semibold transition text-center text-slate-600 hover:bg-slate-100 border border-transparent';
+        }
+      });
+    }
+
+    document.getElementById('tab-lessons').addEventListener('click', () => switchTab('lessons'));
+    document.getElementById('tab-blocks').addEventListener('click', () => switchTab('blocks'));
+    document.getElementById('tab-practice').addEventListener('click', () => switchTab('practice'));
+    document.getElementById('tab-theory').addEventListener('click', () => switchTab('theory'));
+
+    // =========================================================================
+    // 5. LESSONS & QUIZZES ENGINE
+    // =========================================================================
+    function renderModulePills() {
+      const container = document.getElementById('module-pills');
+      container.innerHTML = '';
+      MODULES.forEach((mod, idx) => {
+        const doneCount = mod.steps.filter((_, sIdx) => state.completedSteps[`${mod.id}_${sIdx}`]).length;
+        const isDone = doneCount === mod.steps.length;
+        const isActive = idx === state.moduleIndex;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `shrink-0 whitespace-nowrap px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 border ${
+          isActive
+            ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+            : isDone
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+        }`;
+        btn.innerHTML = `<span>${isDone ? '✓' : '●'}</span><span>${mod.title}</span><span class="opacity-70 text-xs">(${doneCount}/${mod.steps.length})</span>`;
+        btn.addEventListener('click', () => {
+          state.moduleIndex = idx;
+          state.stepIndex = 0;
+          resetStepInteraction();
+          renderLesson();
+        });
+        container.appendChild(btn);
+      });
+      document.getElementById('total-xp-badge').textContent = `⭐ ${state.xp} միավոր`;
+    }
+
+    function resetStepInteraction() {
+      const step = MODULES[state.moduleIndex].steps[state.stepIndex];
+      state.selectedMcq = null;
+      state.stepChecked = false;
+      state.stepPassed = false;
+      if (step && step.type === 'drag') {
+        state.slotValues = new Array(step.answers.length).fill(null);
+      } else {
+        state.slotValues = [];
+      }
+      document.getElementById('hint-box').classList.add('hidden');
+      const fb = document.getElementById('feedback-banner');
+      fb.classList.add('hidden');
+      fb.innerHTML = '';
+    }
+
+    function renderLesson() {
+      renderModulePills();
+      const mod = MODULES[state.moduleIndex];
+      const step = mod.steps[state.stepIndex];
+      const totalSteps = mod.steps.length;
+
+      document.getElementById('hearts-count').textContent = state.hearts;
+      document.getElementById('step-counter').textContent = `${state.stepIndex + 1} / ${totalSteps}`;
+      document.getElementById('lesson-progress-bar').style.width = `${Math.round(((state.stepIndex + 1) / totalSteps) * 100)}%`;
+      document.getElementById('btn-prev-step').disabled = state.stepIndex === 0;
+      document.getElementById('btn-next-step').disabled = state.stepIndex === totalSteps - 1;
+      document.getElementById('hint-text').textContent = step.hint || '';
+      document.getElementById('step-type-label').textContent = step.badge || '';
+
+      const container = document.getElementById('step-container');
+      const btnCheck = document.getElementById('btn-check');
+      const btnContinue = document.getElementById('btn-continue');
+      const btnClear = document.getElementById('btn-clear-slots');
+
+      btnClear.classList.add('hidden');
+
+      if (step.type === 'info') {
+        btnCheck.classList.add('hidden');
+        btnContinue.classList.remove('hidden');
+        container.innerHTML = `
+          <div class="space-y-5">
+            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900">${escapeHtml(step.title)}</h2>
+            <p class="text-slate-700 leading-relaxed text-base">${escapeHtml(step.body)}</p>
+            <pre class="bg-slate-950 text-emerald-300 font-mono-code text-sm p-4 rounded-2xl overflow-x-auto leading-relaxed border border-slate-800">${escapeHtml(step.code)}</pre>
+            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm font-medium flex items-start gap-2.5">
+              <span>📌</span>
+              <span>${escapeHtml(step.note)}</span>
+            </div>
+          </div>
+        `;
+      } else if (step.type === 'mcq') {
+        btnCheck.classList.toggle('hidden', state.stepPassed);
+        btnContinue.classList.toggle('hidden', !state.stepPassed);
+        btnCheck.disabled = state.selectedMcq === null;
+
+        let optionsHtml = step.options.map((opt, idx) => {
+          let cls = 'choice-card w-full text-left px-4 py-3.5 sm:px-5 sm:py-4 bg-white font-mono-code text-xs sm:text-base text-slate-800 break-words';
+          if (state.stepChecked) {
+            if (idx === step.correctIndex && state.stepPassed) cls += ' correct';
+            else if (idx === state.selectedMcq && !state.stepPassed) cls += ' wrong';
+          } else if (idx === state.selectedMcq) {
+            cls += ' selected';
+          }
+          return `<button type="button" data-mcq-idx="${idx}" class="${cls}" ${state.stepPassed ? 'disabled' : ''}>${escapeHtml(opt)}</button>`;
+        }).join('');
+
+        container.innerHTML = `
+          <div class="space-y-5">
+            <h2 class="text-lg sm:text-xl font-bold text-slate-900 leading-snug">${escapeHtml(step.question)}</h2>
+            <div class="space-y-3" id="mcq-options-list">${optionsHtml}</div>
+          </div>
+        `;
+
+        container.querySelectorAll('[data-mcq-idx]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            if (state.stepPassed) return;
+            state.selectedMcq = Number(btn.getAttribute('data-mcq-idx'));
+            state.stepChecked = false;
+            document.getElementById('feedback-banner').classList.add('hidden');
+            renderLesson();
+          });
+        });
+      } else if (step.type === 'drag') {
+        btnCheck.classList.toggle('hidden', state.stepPassed);
+        btnContinue.classList.toggle('hidden', !state.stepPassed);
+        btnClear.classList.toggle('hidden', state.stepPassed);
+        const allFilled = state.slotValues.every(v => v !== null);
+        btnCheck.disabled = !allFilled;
+
+        // Build code lines with interactive drop slots
+        const codeLinesHtml = step.lines.map(line => {
+          const lineHtml = line.parts.map(p => {
+            if (typeof p.slot === 'number') {
+              const val = state.slotValues[p.slot];
+              let slotCls = 'code-slot';
+              if (val) slotCls += ' filled';
+              if (state.stepChecked && val) {
+                slotCls += (val.text === step.answers[p.slot]) ? ' correct' : ' wrong';
+              }
+              return `<span class="${slotCls}" data-slot-idx="${p.slot}" title="Սեղմիր՝ հեռացնելու կամ տեղադրելու համար">${val ? escapeHtml(val.text) : ''}</span>`;
+            }
+            return `<span>${escapeHtml(p.text)}</span>`;
+          }).join('');
+          return `<div class="leading-9 sm:leading-10 whitespace-pre">${lineHtml}</div>`;
+        }).join('');
+
+        const usedBankIndices = new Set(state.slotValues.filter(Boolean).map(v => v.bankIndex));
+        const bankHtml = step.bank.map((word, bIdx) => {
+          const used = usedBankIndices.has(bIdx);
+          return `<button type="button" draggable="${!used && !state.stepPassed}" data-bank-idx="${bIdx}" class="word-chip ${used ? 'used' : ''}">${escapeHtml(word)}</button>`;
+        }).join('');
+
+        container.innerHTML = `
+          <div class="space-y-5">
+            <h2 class="text-base sm:text-lg font-bold text-slate-900 leading-snug">${escapeHtml(step.prompt)}</h2>
+            <p class="text-xs text-slate-500">Քաշիր բառը կամ պարզապես սեղմիր վրան՝ դատարկ վանդակում տեղադրելու համար։ Լրացված վանդակի վրա սեղմելով՝ բառը կվերադառնա ներքև։</p>
+
+            <div class="bg-[#111827] text-slate-100 font-mono-code text-xs sm:text-base p-3.5 sm:p-5 rounded-2xl border border-slate-800 shadow-inner overflow-x-auto">
+              ${codeLinesHtml}
+            </div>
+
+            <div class="p-3 sm:p-4 rounded-2xl bg-slate-100 border border-slate-200 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5" id="word-bank">
+              ${bankHtml}
+            </div>
+          </div>
+        `;
+
+        // Attach Click & Drag handlers for word chips
+        container.querySelectorAll('[data-bank-idx]').forEach(chip => {
+          const bIdx = Number(chip.getAttribute('data-bank-idx'));
+          chip.addEventListener('click', () => {
+            if (state.stepPassed) return;
+            const emptySlot = state.slotValues.findIndex(v => v === null);
+            if (emptySlot === -1) return;
+            state.slotValues[emptySlot] = { text: step.bank[bIdx], bankIndex: bIdx };
+            state.stepChecked = false;
+            document.getElementById('feedback-banner').classList.add('hidden');
+            renderLesson();
+          });
+          chip.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('text/plain', String(bIdx));
+          });
+        });
+
+        // Attach Click & Drop handlers for code slots
+        container.querySelectorAll('[data-slot-idx]').forEach(slotEl => {
+          const sIdx = Number(slotEl.getAttribute('data-slot-idx'));
+          slotEl.addEventListener('click', () => {
+            if (state.stepPassed) return;
+            if (state.slotValues[sIdx] !== null) {
+              state.slotValues[sIdx] = null;
+              state.stepChecked = false;
+              document.getElementById('feedback-banner').classList.add('hidden');
+              renderLesson();
+            }
+          });
+          slotEl.addEventListener('dragover', e => {
+            if (state.stepPassed) return;
+            e.preventDefault();
+            slotEl.classList.add('drag-over');
+          });
+          slotEl.addEventListener('dragleave', () => slotEl.classList.remove('drag-over'));
+          slotEl.addEventListener('drop', e => {
+            if (state.stepPassed) return;
+            e.preventDefault();
+            slotEl.classList.remove('drag-over');
+            const bIdx = Number(e.dataTransfer.getData('text/plain'));
+            if (!Number.isNaN(bIdx) && step.bank[bIdx] !== undefined) {
+              // Remove if already placed in another slot
+              const existing = state.slotValues.findIndex(v => v && v.bankIndex === bIdx);
+              if (existing !== -1) state.slotValues[existing] = null;
+              state.slotValues[sIdx] = { text: step.bank[bIdx], bankIndex: bIdx };
+              state.stepChecked = false;
+              document.getElementById('feedback-banner').classList.add('hidden');
+              renderLesson();
+            }
+          });
+        });
+      }
+    }
+
+    function markStepComplete() {
+      const mod = MODULES[state.moduleIndex];
+      const key = `${mod.id}_${state.stepIndex}`;
+      if (!state.completedSteps[key]) {
+        state.completedSteps[key] = true;
+        state.xp += 10;
+        saveProgress();
+      }
+    }
+
+    function handleCheck() {
+      const mod = MODULES[state.moduleIndex];
+      const step = mod.steps[state.stepIndex];
+      const fb = document.getElementById('feedback-banner');
+      state.stepChecked = true;
+
+      let isCorrect = false;
+      if (step.type === 'mcq') {
+        isCorrect = state.selectedMcq === step.correctIndex;
+      } else if (step.type === 'drag') {
+        isCorrect = step.answers.every((ans, idx) => state.slotValues[idx] && state.slotValues[idx].text === ans);
+      }
+
+      if (isCorrect) {
+        state.stepPassed = true;
+        markStepComplete();
+        fb.className = 'mx-4 sm:mx-6 mb-4 p-3.5 sm:p-4 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-900 text-xs sm:text-sm font-medium flex items-start gap-2.5';
+        fb.innerHTML = `<span class="text-lg">✅</span><div><div class="font-bold">Ճիշտ է (+10 միավոր)</div><div class="mt-0.5">${escapeHtml(step.explanation)}</div></div>`;
+        fb.classList.remove('hidden');
+      } else {
+        state.hearts = Math.max(0, state.hearts - 1);
+        fb.className = 'mx-4 sm:mx-6 mb-4 p-3.5 sm:p-4 rounded-2xl border bg-rose-50 border-rose-200 text-rose-900 text-xs sm:text-sm font-medium flex items-start gap-2.5 animate-shake';
+        fb.innerHTML = `<span class="text-lg">❌</span><div><div class="font-bold">Սխալ է, փորձիր ևս մեկ անգամ</div><div class="mt-0.5">Կարող ես սեղմել «Դժվարանո՞ւմ ես» կոճակը՝ հուշում ստանալու համար։</div></div>`;
+        fb.classList.remove('hidden');
+        if (state.hearts === 0) {
+          document.getElementById('hearts-modal').classList.remove('hidden');
+        }
+      }
+      renderLesson();
+    }
+
+    function handleContinue() {
+      const mod = MODULES[state.moduleIndex];
+      if (mod.steps[state.stepIndex].type === 'info') {
+        markStepComplete();
+      }
+
+      if (state.stepIndex < mod.steps.length - 1) {
+        state.stepIndex++;
+        resetStepInteraction();
+        renderLesson();
+      } else {
+        // Module finished!
+        if (typeof confetti === 'function') {
+          confetti({ particleCount: 70, spread: 65, origin: { y: 0.65 } });
+        }
+        const nextModExists = state.moduleIndex < MODULES.length - 1;
+        const container = document.getElementById('step-container');
+        document.getElementById('btn-check').classList.add('hidden');
+        document.getElementById('btn-continue').classList.add('hidden');
+        document.getElementById('btn-clear-slots').classList.add('hidden');
+        document.getElementById('feedback-banner').classList.add('hidden');
+        renderModulePills();
+
+        container.innerHTML = `
+          <div class="text-center py-6 space-y-5">
+            <div class="text-5xl">🎉</div>
+            <h2 class="text-2xl font-extrabold text-slate-900">Մոդուլն ավարտված է</h2>
+            <p class="text-slate-600 max-w-md mx-auto">Դու հաջողությամբ անցար <strong>${escapeHtml(mod.title)}</strong> բաժինը և արդեն ունես <strong>${state.xp} միավոր</strong>։</p>
+            <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+              ${nextModExists
+                ? `<button id="btn-go-next-mod" type="button" class="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition">Անցնել հաջորդ մոդուլին →</button>`
+                : `<button id="btn-go-compiler" type="button" class="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition">Անցնել C++ կոմպիլյատորին →</button>`
+              }
+              <button id="btn-replay-mod" type="button" class="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm transition">Կրկնել մոդուլը</button>
+            </div>
+          </div>
+        `;
+
+        const btnNextMod = document.getElementById('btn-go-next-mod');
+        if (btnNextMod) {
+          btnNextMod.addEventListener('click', () => {
+            state.moduleIndex++;
+            state.stepIndex = 0;
+            resetStepInteraction();
+            renderLesson();
+          });
+        }
+        const btnGoComp = document.getElementById('btn-go-compiler');
+        if (btnGoComp) {
+          btnGoComp.addEventListener('click', () => switchTab('practice'));
+        }
+        document.getElementById('btn-replay-mod').addEventListener('click', () => {
+          state.stepIndex = 0;
+          resetStepInteraction();
+          renderLesson();
+        });
+      }
+    }
+
+    document.getElementById('btn-check').addEventListener('click', handleCheck);
+    document.getElementById('btn-continue').addEventListener('click', handleContinue);
+    document.getElementById('btn-clear-slots').addEventListener('click', () => {
+      const step = MODULES[state.moduleIndex].steps[state.stepIndex];
+      if (step.type === 'drag') {
+        state.slotValues = new Array(step.answers.length).fill(null);
+        state.stepChecked = false;
+        document.getElementById('feedback-banner').classList.add('hidden');
+        renderLesson();
+      }
+    });
+    document.getElementById('btn-hint').addEventListener('click', () => {
+      document.getElementById('hint-box').classList.toggle('hidden');
+    });
+    document.getElementById('btn-prev-step').addEventListener('click', () => {
+      if (state.stepIndex > 0) {
+        state.stepIndex--;
+        resetStepInteraction();
+        renderLesson();
+      }
+    });
+    document.getElementById('btn-next-step').addEventListener('click', () => {
+      const mod = MODULES[state.moduleIndex];
+      if (state.stepIndex < mod.steps.length - 1) {
+        state.stepIndex++;
+        resetStepInteraction();
+        renderLesson();
+      }
+    });
+    document.getElementById('btn-refill-hearts').addEventListener('click', () => {
+      state.hearts = 5;
+      document.getElementById('hearts-modal').classList.add('hidden');
+      renderLesson();
+      showToast('♥ 5 սրտիկները վերականգնվեցին');
+    });
+    document.getElementById('btn-reset-progress').addEventListener('click', () => {
+      state.xp = 0;
+      state.hearts = 5;
+      state.completedSteps = {};
+      state.solvedBlockTasks = {};
+      state.blockWorkspace = {};
+      state.blockCheckedStatus = null;
+      state.moduleIndex = 0;
+      state.stepIndex = 0;
+      saveProgress();
+      resetStepInteraction();
+      renderLesson();
+      renderBlocksView();
+      showToast('Առաջընթացը զրոյացվեց');
+    });
+
+    // =========================================================================
+    // 6. PRACTICAL TASKS VIEW
+    // =========================================================================
+    function renderPractice() {
+      const pills = document.getElementById('practice-pills');
+      pills.innerHTML = '';
+      PRACTICAL_TASKS.forEach(task => {
+        const active = task.id === state.activePracticeId;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${
+          active
+            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+        }`;
+        btn.textContent = task.shortTitle;
+        btn.addEventListener('click', () => {
+          state.activePracticeId = task.id;
+          renderBlocksView();
+    renderPractice();
+        });
+        pills.appendChild(btn);
+      });
+
+      const task = PRACTICAL_TASKS.find(t => t.id === state.activePracticeId);
+      const card = document.getElementById('practice-detail-card');
+
+      const matrixHtml = `
+        <div class="inline-block border border-slate-300 rounded-xl overflow-hidden">
+          <table class="border-collapse font-mono-code text-sm">
+            ${task.matrix.map((row, rIdx) => `
+              <tr class="${rIdx % 2 === 0 ? 'bg-slate-50' : 'bg-white'}">
+                ${row.map(cell => `<td class="border border-slate-200 px-4 py-2 text-center font-bold text-slate-800">${cell}</td>`).join('')}
+              </tr>
+            `).join('')}
+          </table>
+        </div>
+      `;
+
+      card.innerHTML = `
+        <div class="space-y-3">
+          <span class="inline-block px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">${escapeHtml(task.shortTitle)}</span>
+          <h2 class="text-lg font-extrabold text-slate-900">${escapeHtml(task.title)}</h2>
+          <p class="text-sm text-slate-700 leading-relaxed">${escapeHtml(task.description)}</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-5 pt-1">
+          ${matrixHtml}
+          <div class="space-y-1">
+            <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Սպասվող արդյունքը</div>
+            <pre class="font-mono-code text-sm bg-emerald-50 text-emerald-800 border border-emerald-200 px-3.5 py-2 rounded-xl font-bold">${escapeHtml(task.expectedOutput)}</pre>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 pt-2">
+          <button id="btn-copy-starter" type="button" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition">
+            ↺ Մաքրել
+          </button>
+          <button id="btn-toggle-p-hint" type="button" class="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition">
+            💡 Հուշում
+          </button>
+        </div>
+
+        <div id="p-hint-box" class="hidden p-3.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs sm:text-sm leading-relaxed">
+          ${escapeHtml(task.hint)}
+        </div>
+      `;
+
+      document.getElementById('btn-copy-starter').addEventListener('click', () => {
+        const editorEl = document.getElementById('cpp-code-editor');
+        if (editorEl) {
+          editorEl.value = task.starterCode;
+          updateAutocompleteBar();
+        }
+        showToast('Խմբագրիչը մաքրվեց');
+      });
+      document.getElementById('btn-toggle-p-hint').addEventListener('click', () => {
+        document.getElementById('p-hint-box').classList.toggle('hidden');
+      });
+
+    }
+
+    // =========================================================================
+    // 7. INTERACTIVE THEORY VISUALIZERS
+    // =========================================================================
+    function renderVis1D() {
+      const boxWrap = document.getElementById('vis-1d-boxes');
+      boxWrap.innerHTML = '';
+      state.vis1d.forEach((val, idx) => {
+        const active = idx === state.vis1dSelected;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `p-2 sm:p-3 rounded-xl border-2 text-center transition ${
+          active
+            ? 'border-emerald-500 bg-emerald-50 shadow-xs'
+            : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+        }`;
+        btn.innerHTML = `
+          <div class="text-[10px] sm:text-[11px] font-mono-code text-slate-400">arr[${idx}]</div>
+          <div class="text-base sm:text-lg font-extrabold text-slate-900 mt-0.5">${val}</div>
+        `;
+        btn.addEventListener('click', () => {
+          state.vis1dSelected = idx;
+          renderVis1D();
+        });
+        boxWrap.appendChild(btn);
+      });
+      const i = state.vis1dSelected;
+      document.getElementById('vis-1d-code-line').textContent = `arr[${i}] == ${state.vis1d[i]}; // ${i + 1}-րդ տարրը (դասիչ ${i})`;
+    }
+
+    document.getElementById('btn-vis-1d-inc').addEventListener('click', () => {
+      state.vis1d = state.vis1d.map(v => v + 1);
+      renderVis1D();
+    });
+    document.getElementById('btn-vis-1d-reset').addEventListener('click', () => {
+      state.vis1d = [10, 20, 30, 40, 50];
+      renderVis1D();
+    });
+
+    function renderVis2D() {
+      const wrap = document.getElementById('vis-2d-grid');
+      const { r: selR, c: selC } = state.vis2dSelected;
+
+      let html = '<table class="w-full border-collapse font-mono-code text-sm">';
+      html += '<tr><th class="p-1 sm:p-1.5 text-[11px] sm:text-xs text-slate-400">i \\ j</th>';
+      for (let c = 0; c < 4; c++) {
+        html += `<th class="p-1 sm:p-1.5 text-[11px] sm:text-xs ${c === selC ? 'text-blue-600 font-extrabold' : 'text-slate-400'}"><span class="hidden sm:inline">Սյուն </span>${c}</th>`;
+      }
+      html += '</tr>';
+
+      state.vis2d.forEach((row, r) => {
+        html += `<tr><th class="p-1 sm:p-1.5 text-[11px] sm:text-xs text-right pr-2 sm:pr-3 whitespace-nowrap ${r === selR ? 'text-emerald-600 font-extrabold' : 'text-slate-400'}"><span class="hidden sm:inline">Տող </span>${r}</th>`;
+        row.forEach((val, c) => {
+          const isSel = r === selR && c === selC;
+          const isCross = r === selR || c === selC;
+          html += `
+            <td class="p-1">
+              <button type="button" data-r="${r}" data-c="${c}" class="w-full min-w-[44px] py-2 sm:py-2.5 rounded-xl border-2 font-bold transition ${
+                isSel
+                  ? 'border-blue-600 bg-blue-600 text-white shadow-xs'
+                  : isCross
+                    ? 'border-blue-200 bg-blue-50 text-slate-800'
+                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
+              }">${val}</button>
+            </td>
+          `;
+        });
+        html += '</tr>';
+      });
+      html += '</table>';
+      wrap.innerHTML = html;
+
+      wrap.querySelectorAll('button[data-r]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.vis2dSelected = {
+            r: Number(btn.getAttribute('data-r')),
+            c: Number(btn.getAttribute('data-c'))
+          };
+          renderVis2D();
+        });
+      });
+
+      document.getElementById('vis-2d-readout').textContent = `A[${selR}][${selC}] == ${state.vis2d[selR][selC]} (Տող ${selR}, Սյուն ${selC})`;
+    }
+
+    // =========================================================================
+    // 7.5 SCRATCH-STYLE BLOCK ASSEMBLY ENGINE
+    // =========================================================================
+    function getCurrentBlockTask() {
+      return BLOCK_TASKS.find(t => t.id === state.activeBlockTaskId);
+    }
+
+    function isMobileBlocksMode() {
+      return window.innerWidth < 1024;
+    }
+
+    function getWorkspaceIds(taskId) {
+      if (!state.blockWorkspace[taskId]) {
+        const task = BLOCK_TASKS.find(t => t.id === taskId);
+        // On mobile: pre-populate workspace with all blocks in initial scrambled order
+        state.blockWorkspace[taskId] = (isMobileBlocksMode() && task)
+          ? task.blocks.map(b => b.id)
+          : [];
+      }
+      return state.blockWorkspace[taskId];
+    }
+
+    function renderBlocksView() {
+      const task = getCurrentBlockTask();
+      const wsIds = getWorkspaceIds(task.id);
+      const solvedCount = Object.keys(state.solvedBlockTasks).length;
+      document.getElementById('blocks-score-badge').textContent = `🧩 ${solvedCount} / ${BLOCK_TASKS.length} լուծված`;
+
+      // Pills
+      const pills = document.getElementById('block-task-pills');
+      pills.innerHTML = '';
+      BLOCK_TASKS.forEach(t => {
+        const isActive = t.id === task.id;
+        const isSolved = !!state.solvedBlockTasks[t.id];
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition border flex items-center gap-1.5 ${
+          isActive
+            ? 'bg-slate-900 text-white border-slate-900'
+            : isSolved
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+        }`;
+        btn.innerHTML = `<span>${isSolved ? '✓' : '🧩'}</span><span>${t.shortTitle}</span>`;
+        btn.addEventListener('click', () => {
+          state.activeBlockTaskId = t.id;
+          state.blockCheckedStatus = null;
+          document.getElementById('blocks-hint-box').classList.add('hidden');
+          document.getElementById('blocks-feedback').classList.add('hidden');
+          document.getElementById('blocks-console-status').textContent = 'Սպասում է աշխատացման...';
+          document.getElementById('blocks-console-output').textContent = '// Հավաքիր բլոկները և սեղմիր «Աշխատացնել և Ստուգել»';
+          renderBlocksView();
+        });
+        pills.appendChild(btn);
+      });
+
+      // Task Header + Matrix
+      const headerEl = document.getElementById('block-task-header');
+      const matrixHtml = `
+        <div class="inline-block border border-slate-300 rounded-xl overflow-hidden shrink-0">
+          <table class="border-collapse font-mono-code text-xs sm:text-sm">
+            ${task.matrix.map((row, rIdx) => `
+              <tr class="${rIdx % 2 === 0 ? 'bg-slate-50' : 'bg-white'}">
+                ${row.map(cell => `<td class="border border-slate-200 px-3 py-1.5 text-center font-bold text-slate-800">${cell}</td>`).join('')}
+              </tr>
+            `).join('')}
+          </table>
+        </div>
+      `;
+      headerEl.innerHTML = `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="space-y-1.5">
+            <div class="text-xs font-bold text-emerald-700">${escapeHtml(task.shortTitle)} · Սպասվող արդյունքը՝ <code class="font-mono-code bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">${escapeHtml(task.expectedOutput.replace(/\n/g, ' / '))}</code></div>
+            <h2 class="text-base sm:text-lg font-extrabold text-slate-900">${escapeHtml(task.title)}</h2>
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">${escapeHtml(task.description)}</p>
+          </div>
+          ${matrixHtml}
+        </div>
+      `;
+
+      document.getElementById('blocks-hint-box').textContent = '💡 ' + task.hint;
+
+      // Palette (on mobile: hidden unless blocks were removed with X, then acts as restore tray)
+      const paletteCard = document.getElementById('scratch-palette-card');
+      const paletteTitle = document.getElementById('scratch-palette-title');
+      const paletteSub = document.getElementById('scratch-palette-sub');
+      const paletteEl = document.getElementById('scratch-palette');
+      paletteEl.innerHTML = '';
+      const remaining = task.blocks.filter(b => !wsIds.includes(b.id));
+      const mobileMode = isMobileBlocksMode();
+
+      if (mobileMode) {
+        paletteTitle.textContent = '🗑️ Հեռացված բլոկներ';
+        paletteSub.textContent = 'Սեղմիր՝ վերադարձնելու համար';
+        paletteCard.classList.toggle('hidden', remaining.length === 0);
+      } else {
+        paletteTitle.textContent = '🎨 Բլոկների պահոց';
+        paletteSub.textContent = 'Սեղմիր՝ ավելացնելու համար';
+        paletteCard.classList.remove('hidden');
+      }
+
+      if (remaining.length === 0) {
+        paletteEl.innerHTML = '<div class="text-xs text-slate-400 text-center py-6 border border-dashed border-slate-200 rounded-xl">Բոլոր բլոկները տեղադրված են աշխատանքային դաշտում։</div>';
+      } else {
+        remaining.forEach(block => {
+          const el = document.createElement('div');
+          el.draggable = true;
+          el.className = `scratch-block scratch-cat-${block.cat} ${block.hat ? 'scratch-hat' : ''} ${block.noNotch ? 'no-notch' : ''}`;
+          el.innerHTML = `<span class="break-all">${escapeHtml(block.code)}</span><span class="text-xs opacity-80 shrink-0 pl-1">+</span>`;
+          el.addEventListener('click', () => {
+            wsIds.push(block.id);
+            state.blockCheckedStatus = null;
+            document.getElementById('blocks-feedback').classList.add('hidden');
+            renderBlocksView();
+          });
+          el.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'palette', id: block.id }));
+          });
+          paletteEl.appendChild(el);
+        });
+      }
+
+      // Workspace (assembled blocks)
+      const wsEl = document.getElementById('scratch-workspace');
+      wsEl.innerHTML = '';
+      if (wsIds.length === 0) {
+        wsEl.innerHTML = `
+          <div class="h-full min-h-[180px] flex flex-col items-center justify-center text-center text-slate-400 text-xs sm:text-sm px-4">
+            <div class="text-2xl mb-1.5">🧩</div>
+            <div>Սեղմիր բլոկների վրա կամ քաշիր դրանք այստեղ՝ ծրագիրը հավաքելու համար</div>
+          </div>
+        `;
+      } else {
+        let liveDepth = 0;
+        wsIds.forEach((bId, idx) => {
+          const block = task.blocks.find(b => b.id === bId);
+          if (!block) return;
+          const trimmed = block.code.trim();
+          const closesBefore = trimmed.startsWith('}');
+          if (closesBefore) liveDepth = Math.max(0, liveDepth - 1);
+
+          const wrap = document.createElement('div');
+          const indentStep = window.innerWidth < 640 ? 12 : 18;
+          const indentLevel = mobileMode ? liveDepth : (block.indent || 0);
+          const indentPx = Math.min(indentLevel, 2) * indentStep;
+          wrap.style.marginLeft = `${indentPx}px`;
+
+          const opensAfter = trimmed.endsWith('{');
+          if (opensAfter) liveDepth = Math.min(2, liveDepth + 1);
+
+          let statusCls = '';
+          if (state.blockCheckedStatus === 'correct') {
+            statusCls = 'is-correct';
+          } else if (state.blockCheckedStatus === 'wrong') {
+            const expectedId = task.solutionOrder[idx];
+            statusCls = (expectedId === block.id) ? 'is-correct' : 'is-wrong';
+          }
+
+          const el = document.createElement('div');
+          el.draggable = true;
+          el.className = `scratch-block scratch-cat-${block.cat} ${block.hat ? 'scratch-hat' : ''} ${block.noNotch ? 'no-notch' : ''} ${statusCls}`;
+          el.innerHTML = `
+            <span class="break-all leading-snug">${escapeHtml(block.code)}</span>
+            <div class="flex items-center gap-1 shrink-0">
+              <button type="button" data-act="up" aria-label="Բարձրացնել վերև" class="w-7 h-7 rounded-md bg-black/20 hover:bg-black/35 flex items-center justify-center text-xs font-bold ${idx === 0 ? 'opacity-30 pointer-events-none' : ''}">↑</button>
+              <button type="button" data-act="down" aria-label="Իջեցնել ներքև" class="w-7 h-7 rounded-md bg-black/20 hover:bg-black/35 flex items-center justify-center text-xs font-bold ${idx === wsIds.length - 1 ? 'opacity-30 pointer-events-none' : ''}">↓</button>
+              <button type="button" data-act="remove" aria-label="Հեռացնել բլոկը" class="w-7 h-7 rounded-md bg-black/20 hover:bg-rose-600 flex items-center justify-center text-xs font-bold">✕</button>
+            </div>
+          `;
+
+          el.querySelector('[data-act="up"]').addEventListener('click', e => {
+            e.stopPropagation();
+            if (idx > 0) {
+              [wsIds[idx - 1], wsIds[idx]] = [wsIds[idx], wsIds[idx - 1]];
+              state.blockCheckedStatus = null;
+              document.getElementById('blocks-feedback').classList.add('hidden');
+              renderBlocksView();
+            }
+          });
+          el.querySelector('[data-act="down"]').addEventListener('click', e => {
+            e.stopPropagation();
+            if (idx < wsIds.length - 1) {
+              [wsIds[idx + 1], wsIds[idx]] = [wsIds[idx], wsIds[idx + 1]];
+              state.blockCheckedStatus = null;
+              document.getElementById('blocks-feedback').classList.add('hidden');
+              renderBlocksView();
+            }
+          });
+          el.querySelector('[data-act="remove"]').addEventListener('click', e => {
+            e.stopPropagation();
+            wsIds.splice(idx, 1);
+            state.blockCheckedStatus = null;
+            document.getElementById('blocks-feedback').classList.add('hidden');
+            renderBlocksView();
+          });
+
+          el.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'workspace', fromIdx: idx, id: block.id }));
+          });
+          el.addEventListener('dragover', e => e.preventDefault());
+          el.addEventListener('drop', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+              const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+              if (data.source === 'workspace' && typeof data.fromIdx === 'number') {
+                const [moved] = wsIds.splice(data.fromIdx, 1);
+                wsIds.splice(idx, 0, moved);
+              } else if (data.source === 'palette' && !wsIds.includes(data.id)) {
+                wsIds.splice(idx, 0, data.id);
+              }
+              state.blockCheckedStatus = null;
+              document.getElementById('blocks-feedback').classList.add('hidden');
+              renderBlocksView();
+            } catch (err) {}
+          });
+
+          wrap.appendChild(el);
+          wsEl.appendChild(wrap);
+        });
+      }
+    }
+
+    // Workspace dropzone handlers
+    const wsDropEl = document.getElementById('scratch-workspace');
+    wsDropEl.addEventListener('dragover', e => {
+      e.preventDefault();
+      wsDropEl.classList.add('drag-over');
+    });
+    wsDropEl.addEventListener('dragleave', () => wsDropEl.classList.remove('drag-over'));
+    wsDropEl.addEventListener('drop', e => {
+      e.preventDefault();
+      wsDropEl.classList.remove('drag-over');
+      try {
+        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        const task = getCurrentBlockTask();
+        const wsIds = getWorkspaceIds(task.id);
+        if (data.source === 'palette' && !wsIds.includes(data.id)) {
+          wsIds.push(data.id);
+          state.blockCheckedStatus = null;
+          document.getElementById('blocks-feedback').classList.add('hidden');
+          renderBlocksView();
+        }
+      } catch (err) {}
+    });
+
+    document.getElementById('btn-blocks-hint').addEventListener('click', () => {
+      document.getElementById('blocks-hint-box').classList.toggle('hidden');
+    });
+
+    document.getElementById('btn-blocks-clear').addEventListener('click', () => {
+      const task = getCurrentBlockTask();
+      state.blockWorkspace[task.id] = isMobileBlocksMode()
+        ? task.blocks.map(b => b.id)
+        : [];
+      state.blockCheckedStatus = null;
+      document.getElementById('blocks-feedback').classList.add('hidden');
+      document.getElementById('blocks-console-status').textContent = 'Սպասում է աշխատացման...';
+      document.getElementById('blocks-console-output').textContent = '// Հավաքիր բլոկները և սեղմիր «Աշխատացնել և Ստուգել»';
+      renderBlocksView();
+    });
+
+    // Re-sync mobile/desktop mode cleanly when resizing window
+    let lastMobileBlocksFlag = isMobileBlocksMode();
+    window.addEventListener('resize', () => {
+      const nowMobile = isMobileBlocksMode();
+      if (nowMobile !== lastMobileBlocksFlag) {
+        lastMobileBlocksFlag = nowMobile;
+        const task = getCurrentBlockTask();
+        if (nowMobile && getWorkspaceIds(task.id).length === 0) {
+          state.blockWorkspace[task.id] = task.blocks.map(b => b.id);
+        }
+        renderBlocksView();
+      }
+    });
+
+    document.getElementById('btn-blocks-run').addEventListener('click', () => {
+      const task = getCurrentBlockTask();
+      const wsIds = getWorkspaceIds(task.id);
+      const fb = document.getElementById('blocks-feedback');
+      const consoleOut = document.getElementById('blocks-console-output');
+      const consoleStatus = document.getElementById('blocks-console-status');
+
+      if (wsIds.length === 0) {
+        showToast('Նախ ավելացրու բլոկներ աշխատանքային դաշտում');
+        return;
+      }
+
+      const isExact = wsIds.length === task.solutionOrder.length &&
+        task.solutionOrder.every((id, idx) => wsIds[idx] === id);
+
+      if (isExact) {
+        state.blockCheckedStatus = 'correct';
+        if (!state.solvedBlockTasks[task.id]) {
+          state.solvedBlockTasks[task.id] = true;
+          state.xp += 15;
+          saveProgress();
+          renderModulePills();
+        }
+        fb.className = 'p-3.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900 text-xs sm:text-sm font-semibold';
+        fb.textContent = '✅ Հրաշալի է։ Բլոկները ճիշտ հերթականությամբ են (+15 միավոր)։ Ծրագիրը հաջողությամբ աշխատեց։';
+        fb.classList.remove('hidden');
+        consoleStatus.textContent = '✓ Ավարտվեց առանց սխալի (Exit code 0)';
+        consoleOut.className = 'pt-1 text-emerald-400 whitespace-pre-wrap min-h-[36px] font-bold';
+        consoleOut.textContent = task.expectedOutput;
+        if (typeof confetti === 'function') {
+          confetti({ particleCount: 55, spread: 60, origin: { y: 0.7 } });
+        }
+      } else {
+        state.blockCheckedStatus = 'wrong';
+        const hasDistractor = wsIds.some(id => {
+          const b = task.blocks.find(x => x.id === id);
+          return b && b.distractor;
+        });
+        fb.className = 'p-3.5 rounded-xl border bg-rose-50 border-rose-200 text-rose-900 text-xs sm:text-sm font-semibold animate-shake';
+        if (hasDistractor) {
+          fb.textContent = '❌ Աշխատանքային դաշտում կա ավելորդ (սխալ) բլոկ։ Հեռացրու կարմիրով նշված բլոկը և փորձիր նորից։';
+        } else if (wsIds.length < task.solutionOrder.length) {
+          fb.textContent = `❌ Բոլոր անհրաժեշտ բլոկները դեռ չեն ավելացվել (պետք է ${task.solutionOrder.length} բլոկ)։`;
+        } else {
+          fb.textContent = '❌ Բլոկների հերթականությունը սխալ է։ Կանաչ բլոկները ճիշտ տեղում են, իսկ կարմիրները՝ տեղափոխիր ↑ / ↓ կոճակներով։';
+        }
+        fb.classList.remove('hidden');
+        consoleStatus.textContent = '✕ Սխալ կառուցվածք';
+        consoleOut.className = 'pt-1 text-rose-400 whitespace-pre-wrap min-h-[36px]';
+        consoleOut.textContent = 'Error: Ծրագրի քայլերի հերթականությունը ճիշտ չէ։ Ստուգիր կարմիրով նշված բլոկները։';
+      }
+      renderBlocksView();
+    });
+
+
+
+    // =========================================================================
+    // 7.8 MOBILE-FIRST C++ EDITOR WITH SMART PREFIX AUTOCOMPLETE & BOTTOM CONSOLE
+    // =========================================================================
+    const CPP_SUGGESTIONS = [
+      { key: '#include', label: '#include <iostream>', desc: 'գրադարան', insert: '#include <iostream>' },
+      { key: 'using', label: 'using namespace std;', desc: 'անվանումների տիրույթ', insert: 'using namespace std;' },
+      { key: 'namespace', label: 'namespace std;', desc: 'անվանումների տիրույթ', insert: 'namespace std;' },
+      { key: 'int', label: 'int ', desc: 'ամբողջ թիվ', insert: 'int ' },
+      { key: 'main', label: 'int main() { ... }', desc: 'հիմնական ֆունկցիա', insert: 'int main() {\n    \n    return 0;\n}' },
+      { key: 'cout', label: 'cout << ', desc: 'արտածում', insert: 'cout << ' },
+      { key: 'cin', label: 'cin >> ', desc: 'մուտքագրում', insert: 'cin >> ' },
+      { key: 'endl', label: 'endl;', desc: 'նոր տող', insert: 'endl;' },
+      { key: 'for', label: 'for (int i = 0; i < n; i++)', desc: 'ցիկլ (տողեր)', insert: 'for (int i = 0; i < 3; i++) {\n    \n}' },
+      { key: 'forj', label: 'for (int j = 0; j < m; j++)', desc: 'ցիկլ (սյուներ)', insert: 'for (int j = 0; j < 3; j++) {\n    \n}' },
+      { key: 'while', label: 'while () { }', desc: 'ցիկլ', insert: 'while () {\n    \n}' },
+      { key: 'if', label: 'if () { }', desc: 'պայման', insert: 'if () {\n    \n}' },
+      { key: 'else', label: 'else { }', desc: 'հակառակ դեպքում', insert: 'else {\n    \n}' },
+      { key: 'return', label: 'return 0;', desc: 'ավարտ', insert: 'return 0;' },
+      { key: 'double', label: 'double ', desc: 'իրական թիվ', insert: 'double ' },
+      { key: 'float', label: 'float ', desc: 'իրական թիվ', insert: 'float ' },
+      { key: 'char', label: 'char ', desc: 'նիշ', insert: 'char ' },
+      { key: 'string', label: 'string ', desc: 'տող', insert: 'string ' },
+      { key: 'bool', label: 'bool ', desc: 'տրամաբանական', insert: 'bool ' },
+      { key: 'const', label: 'const ', desc: 'հաստատուն', insert: 'const ' },
+      { key: 'void', label: 'void ', desc: 'ֆունկցիա', insert: 'void ' },
+      { key: 'sum', label: 'sum += a[i][j];', desc: 'գումարում', insert: 'sum += a[i][j];' },
+      { key: 'arr', label: 'arr[i]', desc: '1D տարր', insert: 'arr[i]' },
+      { key: 'a[', label: 'a[i][j]', desc: '2D տարր', insert: 'a[i][j]' },
+      { key: 'matrix', label: 'matrix[i][j]', desc: 'մատրիցի տարր', insert: 'matrix[i][j]' },
+      { key: 'grades', label: 'grades[i][j]', desc: 'գնահատականներ', insert: 'grades[i][j]' },
+      { key: 'sizeof', label: 'sizeof()', desc: 'չափը բայթերով', insert: 'sizeof()' }
+    ];
+
+    const cppEditor = document.getElementById('cpp-code-editor');
+    const acBar = document.getElementById('autocomplete-bar');
+    const acPopup = document.getElementById('ac-popup');
+    const acPopupList = document.getElementById('ac-popup-list');
+    const acPopupPrefix = document.getElementById('ac-popup-prefix');
+    const chkAutocomplete = document.getElementById('chk-autocomplete');
+    let currentAcMatches = [];
+    let acSelectedIdx = 0;
+
+    function getCurrentWordInfo() {
+      const pos = cppEditor.selectionStart || 0;
+      const before = cppEditor.value.slice(0, pos);
+      const match = before.match(/([#a-zA-Z_][a-zA-Z0-9_\[]*)$/);
+      return match ? { word: match[1], start: pos - match[1].length, end: pos } : { word: '', start: pos, end: pos };
+    }
+
+    function hideAcPopup() {
+      acPopup.classList.add('hidden');
+    }
+
+    function insertSuggestion(item, replaceWord) {
+      const info = getCurrentWordInfo();
+      const start = replaceWord ? info.start : (cppEditor.selectionStart || 0);
+      const end = cppEditor.selectionEnd || start;
+      const val = cppEditor.value;
+      cppEditor.value = val.slice(0, start) + item.insert + val.slice(end);
+      const newPos = start + item.insert.length;
+      cppEditor.focus();
+      cppEditor.setSelectionRange(newPos, newPos);
+      acSelectedIdx = 0;
+      hideAcPopup();
+      updateAutocompleteBar(false);
+    }
+
+    function renderAcPopup(word, matches) {
+      if (!chkAutocomplete.checked || !word || matches.length === 0) {
+        hideAcPopup();
+        return;
+      }
+      acPopupPrefix.textContent = `«${word}» — հնարավոր տարբերակներ`;
+      acPopupList.innerHTML = '';
+      matches.forEach((item, idx) => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = `w-full px-3 py-2 text-left flex items-center justify-between gap-3 font-mono-code text-xs transition ${
+          idx === acSelectedIdx ? 'bg-sky-600 text-white' : 'text-slate-200 hover:bg-slate-800'
+        }`;
+        row.innerHTML = `<span class="font-bold truncate">${escapeHtml(item.label)}</span><span class="text-[10px] font-sans opacity-75 shrink-0">${escapeHtml(item.desc)}</span>`;
+        row.addEventListener('mousedown', e => e.preventDefault());
+        row.addEventListener('click', () => insertSuggestion(item, true));
+        acPopupList.appendChild(row);
+      });
+      acPopup.classList.remove('hidden');
+    }
+
+    function updateAutocompleteBar(showPopup = true) {
+      if (!acBar) return;
+      if (!chkAutocomplete.checked) {
+        acBar.innerHTML = '<span class="text-[11px] text-slate-500 py-0.5">Autocomplete-ն անջատված է</span>';
+        currentAcMatches = [];
+        hideAcPopup();
+        return;
+      }
+      const { word } = getCurrentWordInfo();
+      const lower = word.toLowerCase();
+
+      let matches = [];
+      if (lower) {
+        const prefixMatches = CPP_SUGGESTIONS.filter(s => s.key.toLowerCase().startsWith(lower) || s.label.toLowerCase().startsWith(lower));
+        const containsMatches = CPP_SUGGESTIONS.filter(s => !prefixMatches.includes(s) && s.label.toLowerCase().includes(lower));
+        matches = [...prefixMatches, ...containsMatches].slice(0, 8);
+      } else {
+        matches = CPP_SUGGESTIONS.slice(0, 7);
+      }
+
+      currentAcMatches = matches;
+      if (acSelectedIdx >= currentAcMatches.length) acSelectedIdx = 0;
+
+      acBar.innerHTML = '';
+      if (matches.length === 0) {
+        acBar.innerHTML = '<span class="text-[11px] text-slate-500 py-0.5">Համընկնում չկա</span>';
+      } else {
+        matches.forEach(item => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'ac-chip shrink-0';
+          btn.textContent = item.label;
+          btn.addEventListener('mousedown', e => e.preventDefault());
+          btn.addEventListener('click', () => insertSuggestion(item, !!word));
+          acBar.appendChild(btn);
+        });
+      }
+
+      if (showPopup && lower && matches.length > 0) {
+        renderAcPopup(word, matches);
+      } else {
+        hideAcPopup();
+      }
+    }
+
+    cppEditor.addEventListener('input', () => {
+      acSelectedIdx = 0;
+      updateAutocompleteBar(true);
+    });
+    cppEditor.addEventListener('click', () => updateAutocompleteBar(false));
+    cppEditor.addEventListener('blur', () => setTimeout(hideAcPopup, 180));
+
+    cppEditor.addEventListener('keydown', e => {
+      const popupOpen = !acPopup.classList.contains('hidden') && currentAcMatches.length > 0;
+      if (popupOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        e.preventDefault();
+        if (e.key === 'ArrowDown') acSelectedIdx = (acSelectedIdx + 1) % currentAcMatches.length;
+        else acSelectedIdx = (acSelectedIdx - 1 + currentAcMatches.length) % currentAcMatches.length;
+        const { word } = getCurrentWordInfo();
+        renderAcPopup(word, currentAcMatches);
+        return;
+      }
+      if (popupOpen && e.key === 'Escape') {
+        e.preventDefault();
+        hideAcPopup();
+        return;
+      }
+      if (popupOpen && (e.key === 'Tab' || e.key === 'Enter')) {
+        e.preventDefault();
+        insertSuggestion(currentAcMatches[acSelectedIdx] || currentAcMatches[0], true);
+        return;
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const s = cppEditor.selectionStart;
+        const end = cppEditor.selectionEnd;
+        cppEditor.value = cppEditor.value.slice(0, s) + '    ' + cppEditor.value.slice(end);
+        cppEditor.setSelectionRange(s + 4, s + 4);
+        return;
+      }
+      if (chkAutocomplete.checked) {
+        const pairs = { '{': '}', '[': ']', '(': ')', '"': '"' };
+        if (pairs[e.key]) {
+          e.preventDefault();
+          const s = cppEditor.selectionStart;
+          const end = cppEditor.selectionEnd;
+          const openCh = e.key;
+          const closeCh = pairs[e.key];
+          cppEditor.value = cppEditor.value.slice(0, s) + openCh + cppEditor.value.slice(s, end) + closeCh + cppEditor.value.slice(end);
+          cppEditor.setSelectionRange(s + 1, s + 1);
+          updateAutocompleteBar(false);
+        }
+      }
+    });
+
+    chkAutocomplete.addEventListener('change', () => updateAutocompleteBar(false));
+
+    document.querySelectorAll('[data-quick-ins]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const txt = btn.getAttribute('data-quick-ins');
+        const s = cppEditor.selectionStart || 0;
+        const end = cppEditor.selectionEnd || s;
+        cppEditor.value = cppEditor.value.slice(0, s) + txt + cppEditor.value.slice(end);
+        const cursorOffset = (txt === '{}' || txt === '[]') ? 1 : txt.length;
+        cppEditor.focus();
+        cppEditor.setSelectionRange(s + cursorOffset, s + cursorOffset);
+        updateAutocompleteBar(false);
+      });
+    });
+
+    document.getElementById('btn-load-task-to-editor').addEventListener('click', () => {
+      const task = PRACTICAL_TASKS.find(t => t.id === state.activePracticeId);
+      if (task) {
+        cppEditor.value = task.starterCode;
+        updateAutocompleteBar(false);
+        showToast('Խմբագրիչը մաքրվեց');
+      }
+    });
+
+    document.getElementById('btn-clear-console').addEventListener('click', () => {
+      document.getElementById('ide-console-output').textContent = '';
+      document.getElementById('ide-console-status').textContent = 'Մաքրված է';
+      document.getElementById('ide-match-badge').classList.add('hidden');
+    });
+
+    document.getElementById('btn-run-cpp').addEventListener('click', async () => {
+      const code = cppEditor.value.trim();
+      const outEl = document.getElementById('ide-console-output');
+      const statusEl = document.getElementById('ide-console-status');
+      const matchEl = document.getElementById('ide-match-badge');
+      const runBtn = document.getElementById('btn-run-cpp');
+
+      if (!code) {
+        showToast('Նախ գրիր C++ կոդ');
+        return;
+      }
+
+      runBtn.disabled = true;
+      runBtn.textContent = '⏳ Կոմպիլյացվում է...';
+      statusEl.textContent = 'Աշխատում է...';
+      outEl.className = 'text-slate-300 whitespace-pre-wrap min-h-[76px] max-h-[200px] overflow-y-auto leading-relaxed';
+      outEl.textContent = 'Կոդը ուղարկվում է C++ կոմպիլյատորին...';
+      matchEl.classList.add('hidden');
+
+      try {
+        const res = await fetch('https://api.codapi.org/v1/exec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sandbox: 'cpp',
+            command: 'run',
+            files: { '': code }
+          })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        if (data.ok) {
+          const stdout = (data.stdout || '').trim();
+          statusEl.textContent = `✓ Ավարտվեց (${data.duration || 0}ms)`;
+          outEl.className = 'text-emerald-400 whitespace-pre-wrap min-h-[76px] max-h-[200px] overflow-y-auto leading-relaxed font-bold';
+          outEl.textContent = stdout || '(Ծրագիրն ավարտվեց առանց տեքստային ելքի)';
+
+          const task = PRACTICAL_TASKS.find(t => t.id === state.activePracticeId);
+          if (task) {
+            const normOut = stdout.replace(/\s+/g, ' ').trim();
+            const normExp = task.expectedOutput.replace(/\s+/g, ' ').trim();
+            if (normOut === normExp) {
+              matchEl.className = 'px-3 py-2 rounded-xl text-xs font-sans font-bold bg-emerald-950 text-emerald-300 border border-emerald-700';
+              matchEl.textContent = `✅ Ապրե՛ս։ Արդյունքը լիովին համընկնում է ${task.shortTitle}-ի սպասվող պատասխանի հետ։`;
+              matchEl.classList.remove('hidden');
+            }
+          }
+        } else {
+          statusEl.textContent = '✕ Կոմպիլյացիայի սխալ';
+          outEl.className = 'text-rose-400 whitespace-pre-wrap min-h-[76px] max-h-[200px] overflow-y-auto leading-relaxed';
+          outEl.textContent = (data.stderr || data.stdout || 'Սխալ կոդի մեջ').trim();
+        }
+      } catch (err) {
+        statusEl.textContent = 'Ցանցի սխալ';
+        outEl.className = 'text-amber-300 whitespace-pre-wrap min-h-[76px] max-h-[200px] overflow-y-auto leading-relaxed';
+        outEl.textContent = 'Չհաջողվեց միանալ C++ սերվերին։ Ստուգիր ինտերնետ կապը և փորձիր կրկին։';
+      } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = '▶ Աշխատացնել (Run C++)';
+      }
+    });
+
+    // =========================================================================
+    // 8. INIT
+    // =========================================================================
+    loadProgress();
+    resetStepInteraction();
+    renderLesson();
+    renderPractice();
+    cppEditor.value = PRACTICAL_TASKS[0].starterCode;
+    updateAutocompleteBar();
+    renderVis1D();
+    renderVis2D();
+  </script>
+</body>
+</html>
